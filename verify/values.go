@@ -1,102 +1,113 @@
 package verify
 
 import (
-	"bytes"
-	"fmt"
 	"reflect"
 	"testing"
 )
 
 // Values verifies that got has all the content, and only the content, defined by want.
-func Values(t *testing.T, name string, got, want interface{}) bool {
-	s := state{}
-	s.values(reflect.ValueOf(got), reflect.ValueOf(want), "")
-	if s.Len() != 0 {
-		t.Error(name + " values not equivalent:" + s.String())
+func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
+	tr := travel{}
+	tr.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
+
+	fail := tr.report("values", name)
+	if fail != "" {
+		t.Error(fail)
 		return false
 	}
+
 	return true
 }
 
-type state struct {
-	bytes.Buffer
-}
-
-func (s *state) fail(path, msg string, args ...interface{}) {
-	s.WriteByte('\n')
-	if path != "" {
-		s.WriteString(path)
-		s.WriteString(": ")
-	}
-	s.WriteString(fmt.Sprintf(msg, args...))
-}
-
-func (s *state) values(got, want reflect.Value, path string) {
+func (t *travel) values(got, want reflect.Value, path []*segment) {
 	if !want.IsValid() {
 		if got.IsValid() {
-			s.fail(path, "unwanted %s", got)
+			t.differ(path, "unwanted %s", got.Type())
 		}
 		return
 	}
 	if !got.IsValid() {
-		s.fail(path, "missing %s", want)
+		t.differ(path, "missing %s", want.Type())
 		return
 	}
 
 	if got.Type() != want.Type() {
-		s.fail(path, "types differ")
+		t.differ(path, "types differ, %s != %s", got.Type(), want.Type())
+		return
 	}
 
 	switch got.Kind() {
+
 	case reflect.Struct:
+		seg := &segment{format: "/%s"}
+		path = append(path, seg)
 		for i, n := 0, got.NumField(); i < n; i++ {
-			p := path + "/" + got.Type().Field(i).Name
-			s.values(got.Field(i), want.Field(i), p)
+			seg.x = got.Type().Field(i).Name
+			t.values(got.Field(i), want.Field(i), path)
 		}
+		path = path[:len(path)-1]
+
 	case reflect.Slice, reflect.Array:
 		n := got.Len()
 		if n != want.Len() {
-			s.fail(path, "different length")
+			t.differ(path, "got %d elements, want %d", n, want.Len())
+			return
 		}
+
+		seg := &segment{format: "[%d]"}
+		path = append(path, seg)
 		for i := 0; i < n; i++ {
-			p := fmt.Sprintf("%s[%d]", path, i)
-			s.values(got.Index(i), want.Index(i), p)
+			seg.x = i
+			t.values(got.Index(i), want.Index(i), path)
 		}
+		path = path[:len(path)-1]
+
 	case reflect.Ptr, reflect.Interface:
-		s.values(got.Elem(), want.Elem(), path)
+		t.values(got.Elem(), want.Elem(), path)
+
 	case reflect.Map:
-		todo := make(map[interface{}]bool)
+		seg := &segment{}
+		path = append(path, seg)
 		for _, key := range want.MapKeys() {
-			kv := asInterface(key)
-			todo[kv] = true
+			applyKeySeg(seg, key)
+			t.values(got.MapIndex(key), want.MapIndex(key), path)
 		}
 
 		for _, key := range got.MapKeys() {
-			kv := asInterface(key)
-			p := fmt.Sprintf("%s[%v]", path, kv)
-			if !todo[kv] {
-				s.fail(p, "not wanted")
-			} else {
-				todo[kv] = false
-				s.values(got.MapIndex(key), want.MapIndex(key), p)
-			}
-		}
-
-		for key, pending := range todo {
-			if !pending {
+			v := want.MapIndex(key)
+			if v.IsValid() {
 				continue
 			}
-			p := fmt.Sprintf("%s[%v]", path, key)
-			s.fail(p, "not available")
+			applyKeySeg(seg, key)
+			t.values(got.MapIndex(key), v, path)
 		}
+		path = path[:len(path)-1]
+
 	case reflect.Func:
-		s.fail(path, "can't compare functions")
+		t.differ(path, "can't compare functions")
+
+	case reflect.String:
+		a, b := got.String(), want.String()
+		if a != b {
+			t.differ(path, "%q != %q", a, b)
+		}
+
 	default:
 		a, b := asInterface(got), asInterface(want)
 		if a != b {
-			s.fail(path, "%v != %v", a, b)
+			t.differ(path, "%v != %v", a, b)
 		}
+
 	}
+}
+
+func applyKeySeg(dst *segment, key reflect.Value) {
+	if key.Kind() == reflect.String {
+		dst.format = "[%q]"
+	} else {
+		dst.format = "[%v]"
+	}
+	dst.x = asInterface(key)
 }
 
 func asInterface(v reflect.Value) interface{} {
@@ -115,9 +126,7 @@ func asInterface(v reflect.Value) interface{} {
 		return v.Float()
 	case reflect.Complex64, reflect.Complex128:
 		return v.Complex()
-	case reflect.String:
-		return v.String()
 	}
 
-	panic("TODO: can't interface kind %s " + v.Kind().String())
+	panic("verify: can't interface kind " + v.Kind().String())
 }
