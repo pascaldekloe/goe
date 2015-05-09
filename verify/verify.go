@@ -1,3 +1,4 @@
+// Package verify offers convenience routenes for content verification.
 package verify
 
 import (
