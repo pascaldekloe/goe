@@ -106,7 +106,7 @@ func TestGoldenDiffers(t *testing.T) {
 		tr := &travel{}
 		tr.values(reflect.ValueOf(gold.a), reflect.ValueOf(gold.b), nil)
 
-		msg := tr.report("Test", "case")
+		msg := tr.report("case")
 		if len(msg) == 0 {
 			t.Errorf("No report for %#v and %#v", gold.a, gold.b)
 			continue

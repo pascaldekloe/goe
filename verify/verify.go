@@ -39,19 +39,18 @@ func (t *travel) differ(path []*segment, msg string, args ...interface{}) {
 	})
 }
 
-func (t *travel) report(test, name string) string {
+func (t *travel) report(name string) string {
 	if len(t.diffs) == 0 {
 		return ""
 	}
 
 	var buf bytes.Buffer
 
-	if _, file, lineno, ok := runtime.Caller(2); ok {
-		fmt.Fprintf(&buf, "%s at %s:%d: ", test, path.Base(file), lineno)
-	}
-
 	buf.WriteString("verification for ")
 	buf.WriteString(name)
+	if _, file, lineno, ok := runtime.Caller(2); ok {
+		fmt.Fprintf(&buf, " at %s:%d", path.Base(file), lineno)
+	}
 	buf.WriteByte(':')
 
 	for _, d := range t.diffs {

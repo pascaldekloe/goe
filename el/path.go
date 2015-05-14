@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// BUG(pascaldekloe): Relative paths are not supported yet.
 func eval(expr string, root interface{}) (result []reflect.Value) {
 	expr = path.Clean(expr)
 	if !path.IsAbs(expr) {
@@ -16,6 +17,7 @@ func eval(expr string, root interface{}) (result []reflect.Value) {
 	return resolve(strings.Split(expr, "/")[1:], root)
 }
 
+// BUG(pascaldekloe): Maps are ignored.
 func resolve(path []string, root interface{}) (matches []reflect.Value) {
 	matches = []reflect.Value{reflect.ValueOf(root)}
 	for _, segment := range path {

@@ -10,7 +10,7 @@ func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
 	tr := travel{}
 	tr.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
 
-	fail := tr.report("values", name)
+	fail := tr.report(name)
 	if fail != "" {
 		t.Error(fail)
 		return false

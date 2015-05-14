@@ -136,3 +136,16 @@ func TestWildCards(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkGoldenCases(b *testing.B) {
+	todo := b.N
+	for {
+		for _, g := range golden {
+			String(g.expr, g.data)
+			todo--
+			if todo == 0 {
+				return
+			}
+		}
+	}
+}
