@@ -25,6 +25,8 @@ type ptrs struct {
 
 type node struct {
 	sub interface{}
+	a   [2]interface{}
+	s   []interface{}
 }
 
 var testV = vals{
@@ -56,11 +58,18 @@ var golden = []goldenCase{
 	{"/ip", &testPV, testV.i},
 	{"/sub/sub/u", node{sub: node{sub: testV}}, testV.u},
 	{"/sub/../sub/fp", node{sub: &testPV}, testV.f},
-	{"/sub/./sub/c", &node{sub: &node{&testV}}, testV.c},
+	{"/sub/./sub/c", &node{sub: &node{sub: &testV}}, testV.c},
 	{"/", testV.s, testV.s},
 	{"/field", testV.s, nil},
 	{"/mis", node{}, nil},
 	{"/sub/x", node{}, nil},
+	{"/s[1]", node{}, nil},
+	{"/a[4]", node{}, nil},
+	{"/s[0]", &node{s: []interface{}{testV.i}}, testV.i},
+	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
+	{"/[1]", "hello", testV.u + 97},
+	{"/[1", "hello", nil},
+	{"/[1]", testV, nil},
 }
 
 func TestGolden(t *testing.T) {

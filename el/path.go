@@ -3,6 +3,7 @@ package el
 import (
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -16,32 +17,59 @@ func eval(expr string, root interface{}) (result []reflect.Value) {
 }
 
 func resolve(path []string, root interface{}) (result []reflect.Value) {
-	o := reflect.ValueOf(root)
+	v := reflect.ValueOf(root)
 	for _, segment := range path {
 		if segment == "" {
 			break
 		}
 
-		k := o.Kind()
-		for k == reflect.Ptr || k == reflect.Interface {
-			o = o.Elem()
-			k = o.Kind()
+		var field, key string
+		if i := strings.IndexByte(segment, '['); i < 0 {
+			field = segment
+		} else {
+			last := len(segment) - 1
+			if segment[last] != ']' {
+				return
+			}
+			key = segment[i+1 : last]
+			field = segment[:i]
 		}
 
-		switch k {
-		case reflect.Struct:
-			o = o.FieldByName(segment)
-		default:
-			return
+		if field != "" {
+			v = follow(v)
+			switch v.Kind() {
+			case reflect.Struct:
+				v = v.FieldByName(field)
+			default:
+				return
+			}
+		}
+
+		if key != "" {
+			v = follow(v)
+			switch v.Kind() {
+			case reflect.Slice, reflect.Array, reflect.String:
+				i, err := strconv.Atoi(key)
+				if err != nil || i < 0 || i >= v.Len() {
+					return
+				}
+				v = v.Index(i)
+			default:
+				return
+			}
 		}
 	}
 
-	k := o.Kind()
-	for k == reflect.Ptr || k == reflect.Interface {
-		o = o.Elem()
-		k = o.Kind()
-	}
-
-	result = append(result, o)
+	v = follow(v)
+	result = append(result, v)
 	return
+}
+
+func follow(v reflect.Value) reflect.Value {
+	k := v.Kind()
+	for k == reflect.Ptr || k == reflect.Interface {
+		v = v.Elem()
+		k = v.Kind()
+	}
+	return v
 }
