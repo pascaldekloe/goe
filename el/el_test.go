@@ -110,3 +110,29 @@ func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 		t.Errorf("Got %v, want %v for %s", got, want, gold.expr)
 	}
 }
+
+func TestWildCards(t *testing.T) {
+	data := &node{
+		a: [2]interface{}{99, 100},
+		s: []interface{}{"a", "b", 3},
+	}
+
+	tests := []struct {
+		got, want interface{}
+	}{
+		{Bools("/*", testV), []bool{testV.b}},
+		{Ints("/*", testV), []int64{testV.i}},
+		{Uints("/*", testV), []uint64{testV.u}},
+		{Floats("/*", testV), []float64{testV.f}},
+		{Complexes("/*", testV), []complex128{testV.c}},
+		{Strings("/*", testV), []string{testV.s}},
+
+		{Ints("/a[*]", data), []int64{99, 100}},
+		{Strings("/*[*]", data), []string{"a", "b"}},
+	}
+	for _, test := range tests {
+		if !reflect.DeepEqual(test.got, test.want) {
+			t.Errorf("Got %#v, want %#v", test.got, test.want)
+		}
+	}
+}

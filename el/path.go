@@ -16,60 +16,98 @@ func eval(expr string, root interface{}) (result []reflect.Value) {
 	return resolve(strings.Split(expr, "/")[1:], root)
 }
 
-func resolve(path []string, root interface{}) (result []reflect.Value) {
-	v := reflect.ValueOf(root)
+func resolve(path []string, root interface{}) (matches []reflect.Value) {
+	matches = []reflect.Value{reflect.ValueOf(root)}
 	for _, segment := range path {
-		if segment == "" {
-			break
-		}
-
 		var field, key string
 		if i := strings.IndexByte(segment, '['); i < 0 {
 			field = segment
 		} else {
 			last := len(segment) - 1
 			if segment[last] != ']' {
-				return
+				return nil
 			}
 			key = segment[i+1 : last]
 			field = segment[:i]
 		}
 
 		if field != "" {
-			v = follow(v)
-			switch v.Kind() {
-			case reflect.Struct:
-				v = v.FieldByName(field)
-			default:
-				return
-			}
+			matches = follow(matches)
+			matches = applyField(field, matches)
 		}
 
 		if key != "" {
-			v = follow(v)
-			switch v.Kind() {
-			case reflect.Slice, reflect.Array, reflect.String:
-				i, err := strconv.Atoi(key)
-				if err != nil || i < 0 || i >= v.Len() {
-					return
-				}
-				v = v.Index(i)
-			default:
-				return
-			}
+			matches = follow(matches)
+			matches = applyKey(key, matches)
+		}
+
+		if len(matches) == 0 {
+			return
 		}
 	}
 
-	v = follow(v)
-	result = append(result, v)
+	matches = follow(matches)
 	return
 }
 
-func follow(v reflect.Value) reflect.Value {
-	k := v.Kind()
-	for k == reflect.Ptr || k == reflect.Interface {
-		v = v.Elem()
-		k = v.Kind()
+func applyField(field string, matches []reflect.Value) []reflect.Value {
+	var gained []reflect.Value
+	writeIndex := 0
+	for _, v := range matches {
+		switch v.Kind() {
+		case reflect.Struct:
+			if field == "*" {
+				for i := v.Type().NumField() - 1; i >= 0; i-- {
+					gained = append(gained, v.Field(i))
+				}
+			} else {
+				matches[writeIndex] = v.FieldByName(field)
+				writeIndex++
+			}
+		default:
+		}
 	}
-	return v
+	return append(matches[:writeIndex], gained...)
+}
+
+func applyKey(key string, matches []reflect.Value) []reflect.Value {
+	var gained []reflect.Value
+	writeIndex := 0
+	for _, v := range matches {
+		switch v.Kind() {
+		case reflect.Slice, reflect.Array, reflect.String:
+			if key == "*" {
+				for i, n := 0, v.Len(); i < n; i++ {
+					gained = append(gained, v.Index(i))
+				}
+			} else {
+				i, err := strconv.Atoi(key)
+				if err == nil && i >= 0 && i < v.Len() {
+					matches[writeIndex] = v.Index(i)
+					writeIndex++
+				}
+			}
+		default:
+		}
+	}
+	return append(matches[:writeIndex], gained...)
+}
+
+func follow(matches []reflect.Value) []reflect.Value {
+	writeIndex := 0
+	for _, v := range matches {
+		k := v.Kind()
+		for k == reflect.Ptr || k == reflect.Interface {
+			v = v.Elem()
+			k = v.Kind()
+		}
+
+		if !v.IsValid() {
+			continue
+		}
+
+		matches[writeIndex] = v
+		writeIndex++
+	}
+	return matches[:writeIndex]
 }

@@ -6,6 +6,7 @@ import (
 	"reflect"
 )
 
+// Bool returns the result if, and only if, the expression has one value and the value is a boolean type.
 func Bool(expr string, root interface{}) (result bool, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -20,6 +21,7 @@ func Bool(expr string, root interface{}) (result bool, ok bool) {
 	return v.Bool(), true
 }
 
+// Int returns the result if, and only if, the expression has one value and the value is an integer type.
 func Int(expr string, root interface{}) (result int64, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -34,6 +36,7 @@ func Int(expr string, root interface{}) (result int64, ok bool) {
 	return v.Int(), true
 }
 
+// Uint returns the result if, and only if, the expression has one value and the value is an unsigned integer type.
 func Uint(expr string, root interface{}) (result uint64, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -48,6 +51,7 @@ func Uint(expr string, root interface{}) (result uint64, ok bool) {
 	return v.Uint(), true
 }
 
+// Float returns the result if, and only if, the expression has one value and the value is a floating point type.
 func Float(expr string, root interface{}) (result float64, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -62,6 +66,7 @@ func Float(expr string, root interface{}) (result float64, ok bool) {
 	return v.Float(), true
 }
 
+// Complex returns the result if, and only if, the expression has one value and the value is a complex type.
 func Complex(expr string, root interface{}) (result complex128, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -76,6 +81,7 @@ func Complex(expr string, root interface{}) (result complex128, ok bool) {
 	return v.Complex(), true
 }
 
+// String returns the result if, and only if, the expression has one value and the value is a string type.
 func String(expr string, root interface{}) (result string, ok bool) {
 	a := eval(expr, root)
 	if len(a) != 1 {
@@ -88,4 +94,100 @@ func String(expr string, root interface{}) (result string, ok bool) {
 	}
 
 	return v.String(), true
+}
+
+// Bools returns all values with a boolean type.
+func Bools(expr string, root interface{}) []bool {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]bool, 0, len(a))
+	for _, v := range a {
+		if v.Kind() == reflect.Bool {
+			b = append(b, v.Bool())
+		}
+	}
+	return b
+}
+
+// Ints returns all values with an integer type.
+func Ints(expr string, root interface{}) []int64 {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]int64, 0, len(a))
+	for _, v := range a {
+		if k := v.Kind(); k == reflect.Int64 || k == reflect.Int32 || k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 {
+			b = append(b, v.Int())
+		}
+	}
+	return b
+}
+
+// Uints returns all values with an unsigned integer type.
+func Uints(expr string, root interface{}) []uint64 {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]uint64, 0, len(a))
+	for _, v := range a {
+		if k := v.Kind(); k == reflect.Uint64 || k == reflect.Uint32 || k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 {
+			b = append(b, v.Uint())
+		}
+	}
+	return b
+}
+
+// Uints returns all values with a floating point type.
+func Floats(expr string, root interface{}) []float64 {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]float64, 0, len(a))
+	for _, v := range a {
+		if k := v.Kind(); k == reflect.Float64 || k == reflect.Float32 {
+			b = append(b, v.Float())
+		}
+	}
+	return b
+}
+
+// Complexes returns all values with a complex type.
+func Complexes(expr string, root interface{}) []complex128 {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]complex128, 0, len(a))
+	for _, v := range a {
+		if k := v.Kind(); k == reflect.Complex128 || k == reflect.Complex64 {
+			b = append(b, v.Complex())
+		}
+	}
+	return b
+}
+
+// Strings returns all values with a string type.
+func Strings(expr string, root interface{}) []string {
+	a := eval(expr, root)
+	if len(a) == 0 {
+		return nil
+	}
+
+	b := make([]string, 0, len(a))
+	for _, v := range a {
+		if v.Kind() == reflect.String {
+			b = append(b, v.String())
+		}
+	}
+	return b
 }
