@@ -1,5 +1,11 @@
 // Package el offers expression language "Goel".
-// Goel is error-free by design. Malformed expressions have no result.
+//
+// The API is error-free by design. Malformed expressions simply have no result.
+//
+// Struct fields can be selected by name as in "/Catalog/Title".
+// Square brackets are used for index selection.
+// For example, el.Int("/Movies[3]/Year", c) gets the fourth movie's year and
+// el.Strings("/Movies[*]/Title", c) will get all movie titles.
 package el
 
 import (
@@ -144,7 +150,7 @@ func Uints(expr string, root interface{}) []uint64 {
 	return b
 }
 
-// Uints returns all values with a floating point type.
+// Floats returns all values with a floating point type.
 func Floats(expr string, root interface{}) []float64 {
 	a := eval(expr, root)
 	if len(a) == 0 {

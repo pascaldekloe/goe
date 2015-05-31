@@ -10,7 +10,7 @@ Goel expressions provide error free access to object content.
 ```
 % go test -bench=GoldenCases -benchmem
 PASS
-BenchmarkGoldenCases	 3000000	       576 ns/op	      81 B/op	       3 allocs/op
+BenchmarkGoldenCases	 3000000	       548 ns/op	      64 B/op	       3 allocs/op
 ok  	_/Users/pkloe/Code/goe/src/el	2.367s
 ```
 

@@ -7,43 +7,39 @@ import (
 	"strings"
 )
 
-// BUG(pascaldekloe): Relative paths are not supported yet.
-func eval(expr string, root interface{}) (result []reflect.Value) {
+func eval(expr string, root interface{}) []reflect.Value {
+	v := reflect.ValueOf(root)
+
 	expr = path.Clean(expr)
-	if !path.IsAbs(expr) {
-		return // TODO
+	if expr == "/" || expr == "." {
+		return resolve(nil, v)
 	}
 
-	return resolve(strings.Split(expr, "/")[1:], root)
+	if expr[0] == '/' {
+		expr = expr[1:]
+	}
+	return resolve(strings.Split(expr, "/"), v)
 }
 
-// BUG(pascaldekloe): Maps are ignored.
-func resolve(path []string, root interface{}) (matches []reflect.Value) {
-	matches = []reflect.Value{reflect.ValueOf(root)}
-	for _, segment := range path {
-		if segment == "" {
-			continue
-		}
-
+// resolve follows track for all path elements and returns the matches.
+func resolve(segments []string, track ...reflect.Value) []reflect.Value {
+	for _, segment := range segments {
 		field, key := parseSegment(segment)
-
 		if field != "" {
-			matches = follow(matches)
-			matches = applyField(field, matches)
+			track = follow(track)
+			track = applyField(field, track)
 		}
-
 		if key != "" {
-			matches = follow(matches)
-			matches = applyKey(key, matches)
+			track = follow(track)
+			track = applyKey(key, track)
 		}
 
-		if len(matches) == 0 {
-			return
+		if len(track) == 0 {
+			break
 		}
 	}
 
-	matches = follow(matches)
-	return
+	return follow(track)
 }
 
 // parseSegment interprets a path element.
@@ -61,10 +57,10 @@ func parseSegment(s string) (field, key string) {
 	return s[:i], s[i+1 : last]
 }
 
-func applyField(field string, matches []reflect.Value) []reflect.Value {
+func applyField(field string, track []reflect.Value) []reflect.Value {
 	var gained []reflect.Value
 	writeIndex := 0
-	for _, v := range matches {
+	for _, v := range track {
 		switch v.Kind() {
 		case reflect.Struct:
 			if field == "*" {
@@ -72,19 +68,20 @@ func applyField(field string, matches []reflect.Value) []reflect.Value {
 					gained = append(gained, v.Field(i))
 				}
 			} else {
-				matches[writeIndex] = v.FieldByName(field)
+				track[writeIndex] = v.FieldByName(field)
 				writeIndex++
 			}
+
 		default:
 		}
 	}
-	return append(matches[:writeIndex], gained...)
+	return append(track[:writeIndex], gained...)
 }
 
-func applyKey(key string, matches []reflect.Value) []reflect.Value {
+func applyKey(key string, track []reflect.Value) []reflect.Value {
 	var gained []reflect.Value
 	writeIndex := 0
-	for _, v := range matches {
+	for _, v := range track {
 		switch v.Kind() {
 		case reflect.Slice, reflect.Array, reflect.String:
 			if key == "*" {
@@ -94,14 +91,17 @@ func applyKey(key string, matches []reflect.Value) []reflect.Value {
 			} else {
 				i, err := strconv.Atoi(key)
 				if err == nil && i >= 0 && i < v.Len() {
-					matches[writeIndex] = v.Index(i)
+					track[writeIndex] = v.Index(i)
 					writeIndex++
 				}
 			}
+
 		default:
+			// BUG(pascaldekloe): Maps are ignored / unsupported.
+
 		}
 	}
-	return append(matches[:writeIndex], gained...)
+	return append(track[:writeIndex], gained...)
 }
 
 func follow(matches []reflect.Value) []reflect.Value {

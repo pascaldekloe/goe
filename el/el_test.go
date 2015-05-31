@@ -59,17 +59,18 @@ var golden = []goldenCase{
 	{"/sub/sub/u", node{sub: node{sub: testV}}, testV.u},
 	{"/sub/../sub/fp", node{sub: &testPV}, testV.f},
 	{"/sub/./sub/c", &node{sub: &node{sub: &testV}}, testV.c},
-	{"/", testV.s, testV.s},
+	{"sub/sp", &node{sub: &testPV}, testV.s},
+	{"/", &testPV.sp, testV.s},
+	{".", "hello", "hello"},
+	{"[1]", "hello", uint64('e')},
+	{"/s/[0]", &node{s: []interface{}{testV.i}}, testV.i},
+	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
 	{"/field", testV.s, nil},
 	{"/mis", node{}, nil},
-	{"/sub/x", node{}, nil},
-	{"/s[1]", node{}, nil},
-	{"/a[4]", node{}, nil},
-	{"/s[0]", &node{s: []interface{}{testV.i}}, testV.i},
-	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
-	{"/[1]", "hello", testV.u + 97},
-	{"/1]", "hello", nil},
+	{"/sub", node{sub: testV}, nil},
 	{"/[1]", testV, nil},
+	{"/s[0]", node{}, nil},
+	{"/a[4]", node{}, nil},
 }
 
 func TestGolden(t *testing.T) {
@@ -88,26 +89,18 @@ func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 		reflect.ValueOf(gold.expr),
 		reflect.ValueOf(gold.data),
 	}
-	r := f.Call(args)
-	got, ok := r[0].Interface(), r[1].Bool()
+	result := f.Call(args)
 
-	typ := r[0].Type()
+	typ := result[0].Type()
+	wantMatch := gold.want != nil && typ == reflect.TypeOf(gold.want)
 
-	if !ok {
-		if gold.want != nil && reflect.TypeOf(gold.want) == typ {
-			t.Errorf("Got %s not OK for %q on %#v", typ, gold.expr, gold.data)
-		}
+	if got := result[1].Bool(); got != wantMatch {
+		t.Errorf("Got %s OK %t, want %t for %q", typ, got, wantMatch, gold.expr)
 		return
 	}
 
-	if gold.want == nil {
-		t.Errorf("Got %s OK with %#v for %q on %#v", typ, got, gold.expr, gold.data)
-		return
-	}
-
-	want := reflect.ValueOf(gold.want).Interface()
-	if got != want {
-		t.Errorf("Got %v, want %v for %s", got, want, gold.expr)
+	if got := result[0].Interface(); wantMatch && got != gold.want {
+		t.Errorf("Got %s %#v, want %#v for %q", typ, got, gold.want, gold.expr)
 	}
 }
 
