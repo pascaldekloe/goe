@@ -21,17 +21,11 @@ func eval(expr string, root interface{}) (result []reflect.Value) {
 func resolve(path []string, root interface{}) (matches []reflect.Value) {
 	matches = []reflect.Value{reflect.ValueOf(root)}
 	for _, segment := range path {
-		var field, key string
-		if i := strings.IndexByte(segment, '['); i < 0 {
-			field = segment
-		} else {
-			last := len(segment) - 1
-			if segment[last] != ']' {
-				return nil
-			}
-			key = segment[i+1 : last]
-			field = segment[:i]
+		if segment == "" {
+			continue
 		}
+
+		field, key := parseSegment(segment)
 
 		if field != "" {
 			matches = follow(matches)
@@ -50,6 +44,21 @@ func resolve(path []string, root interface{}) (matches []reflect.Value) {
 
 	matches = follow(matches)
 	return
+}
+
+// parseSegment interprets a path element.
+func parseSegment(s string) (field, key string) {
+	last := len(s) - 1
+	if s[last] != ']' {
+		return s, ""
+	}
+
+	i := strings.IndexByte(s, '[')
+	if i < 0 {
+		return s, "" // matches nothing
+	}
+
+	return s[:i], s[i+1 : last]
 }
 
 func applyField(field string, matches []reflect.Value) []reflect.Value {

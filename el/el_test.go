@@ -68,7 +68,7 @@ var golden = []goldenCase{
 	{"/s[0]", &node{s: []interface{}{testV.i}}, testV.i},
 	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
 	{"/[1]", "hello", testV.u + 97},
-	{"/[1", "hello", nil},
+	{"/1]", "hello", nil},
 	{"/[1]", testV, nil},
 }
 
