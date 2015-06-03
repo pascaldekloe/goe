@@ -2,10 +2,11 @@
 //
 // The API is error-free by design. Malformed expressions simply have no result.
 //
-// Struct fields can be selected by name as in "/Catalog/Title".
-// Square brackets are used for index selection.
-// For example, el.Int("/Movies[3]/Year", c) gets the fourth movie's year and
-// el.Strings("/Movies[*]/Title", c) will get all movie titles.
+// Slash-separated paths are used to select data. Both public and private struct fields can be selected by name.
+//
+// Elements in indexed types array, slice and string are denoted with a zero based integer literal inbetween
+// square brackets. Keys from map types also use the square bracket notation. Asterisk can be used as a wildcard
+// as in `[*]` to match all entries.
 package el
 
 import (

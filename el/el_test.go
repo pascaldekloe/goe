@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+type customString string
+
 type vals struct {
 	b bool
 	i int64
@@ -62,15 +64,21 @@ var golden = []goldenCase{
 	{"sub/sp", &node{sub: &testPV}, testV.s},
 	{"/", &testPV.sp, testV.s},
 	{".", "hello", "hello"},
-	{"[1]", "hello", uint64('e')},
+	{"[0]", "hello", uint64('h')},
 	{"/s/[0]", &node{s: []interface{}{testV.i}}, testV.i},
 	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
+	{"/[true]", map[bool]string{true: "y"}, "y"},
+	{`.["I \x2f O"]`, map[customString]float64{"I / O": 99.8}, 99.8},
+	{".[1]/[2]", map[int]map[uint]string{1: {2: "1.2"}}, "1.2"},
+	{"[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
 	{"/field", testV.s, nil},
 	{"/mis", node{}, nil},
+	{`[yes]`, map[bool]bool{}, nil},
 	{"/sub", node{sub: testV}, nil},
-	{"/[1]", testV, nil},
-	{"/s[0]", node{}, nil},
-	{"/a[4]", node{}, nil},
+	{"/[3]", testV, nil},
+	{"/s[4]", node{}, nil},
+	{"/a[5]", node{}, nil},
+	{"[6.66]", map[float64]bool{}, nil},
 }
 
 func TestGolden(t *testing.T) {

@@ -1,6 +1,7 @@
 package el
 
 import (
+	"fmt"
 	"path"
 	"reflect"
 	"strconv"
@@ -8,11 +9,12 @@ import (
 )
 
 func eval(expr string, root interface{}) []reflect.Value {
-	v := reflect.ValueOf(root)
+	v := []reflect.Value{reflect.ValueOf(root)}
+	follow(v)
 
 	expr = path.Clean(expr)
 	if expr == "/" || expr == "." {
-		return resolve(nil, v)
+		return v
 	}
 
 	if expr[0] == '/' {
@@ -22,15 +24,13 @@ func eval(expr string, root interface{}) []reflect.Value {
 }
 
 // resolve follows track for all path elements and returns the matches.
-func resolve(segments []string, track ...reflect.Value) []reflect.Value {
+func resolve(segments []string, track []reflect.Value) []reflect.Value {
 	for _, segment := range segments {
 		field, key := parseSegment(segment)
 		if field != "" {
-			track = follow(track)
 			track = applyField(field, track)
 		}
 		if key != "" {
-			track = follow(track)
 			track = applyKey(key, track)
 		}
 
@@ -39,86 +39,161 @@ func resolve(segments []string, track ...reflect.Value) []reflect.Value {
 		}
 	}
 
-	return follow(track)
+	return track
 }
 
 // parseSegment interprets a path element.
 func parseSegment(s string) (field, key string) {
-	last := len(s) - 1
-	if s[last] != ']' {
-		return s, ""
+	field = s
+
+	if last := len(s) - 1; s[last] == ']' {
+		if i := strings.IndexByte(s, '['); i >= 0 {
+			field = s[:i]
+			key = s[i+1 : last]
+		}
 	}
 
-	i := strings.IndexByte(s, '[')
-	if i < 0 {
-		return s, "" // matches nothing
+	if field == "." {
+		field = ""
 	}
 
-	return s[:i], s[i+1 : last]
+	return
 }
 
+// applyField returs the field matches from all elements in track.
 func applyField(field string, track []reflect.Value) []reflect.Value {
-	var gained []reflect.Value
-	writeIndex := 0
-	for _, v := range track {
-		switch v.Kind() {
-		case reflect.Struct:
-			if field == "*" {
-				for i := v.Type().NumField() - 1; i >= 0; i-- {
-					gained = append(gained, v.Field(i))
-				}
-			} else {
+	if field != "*" {
+		// Write values back to track with writeIndex.
+		writeIndex := 0
+		for _, v := range track {
+			if v.Kind() == reflect.Struct {
 				track[writeIndex] = v.FieldByName(field)
 				writeIndex++
 			}
+		}
+		return follow(track[:writeIndex])
+	}
 
-		default:
+	// Filter struct types in track and count values with n.
+	writeIndex, n := 0, 0
+	for _, v := range track {
+		if v.Kind() == reflect.Struct {
+			n += v.Type().NumField()
+			track[writeIndex] = v
+			writeIndex++
 		}
 	}
-	return append(track[:writeIndex], gained...)
+	track = track[:writeIndex]
+
+	// Collect all values in found
+	found := make([]reflect.Value, n)
+	for _, v := range track {
+		for i := v.Type().NumField() - 1; i >= 0; i-- {
+			n--
+			found[n] = v.Field(i)
+		}
+	}
+	return follow(found)
 }
 
+// applyField returs the key matches from all elements in track.
 func applyKey(key string, track []reflect.Value) []reflect.Value {
-	var gained []reflect.Value
-	writeIndex := 0
-	for _, v := range track {
-		switch v.Kind() {
-		case reflect.Slice, reflect.Array, reflect.String:
-			if key == "*" {
-				for i, n := 0, v.Len(); i < n; i++ {
-					gained = append(gained, v.Index(i))
-				}
-			} else {
-				i, err := strconv.Atoi(key)
-				if err == nil && i >= 0 && i < v.Len() {
-					track[writeIndex] = v.Index(i)
+	if key != "*" {
+		// Write values back to track with writeIndex.
+		writeIndex := 0
+		for _, v := range track {
+			switch v.Kind() {
+			case reflect.Array, reflect.Slice, reflect.String:
+				i, err := strconv.ParseUint(key, 0, 64)
+				if err == nil && i < uint64(v.Len()) {
+					track[writeIndex] = v.Index(int(i))
 					writeIndex++
 				}
+
+			case reflect.Map:
+				kt := v.Type().Key()
+				kp := reflect.New(kt)
+				switch kt.Kind() {
+				case reflect.String:
+					if s, err := strconv.Unquote(key); err == nil {
+						kp.Elem().SetString(s)
+					}
+
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					if i, err := strconv.ParseInt(key, 0, 64); err == nil {
+						kp.Elem().SetInt(i)
+					}
+
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					if u, err := strconv.ParseUint(key, 0, 64); err == nil {
+						kp.Elem().SetUint(u)
+					}
+
+				case reflect.Float32, reflect.Float64:
+					if f, err := strconv.ParseFloat(key, 64); err == nil {
+						kp.Elem().SetFloat(f)
+					}
+
+				default:
+					ptr := kp.Interface()
+					if n, _ := fmt.Sscan(key, ptr); n == 1 {
+						kp = reflect.ValueOf(ptr)
+					}
+
+				}
+				track[writeIndex] = v.MapIndex(kp.Elem())
+				writeIndex++
+
 			}
+		}
+		return follow(track[:writeIndex])
+	}
 
-		default:
-			// BUG(pascaldekloe): Maps are ignored / unsupported.
-
+	// Filter keyed types in track and count values with n.
+	writeIndex, n := 0, 0
+	for _, v := range track {
+		switch v.Kind() {
+		case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+			n += v.Len()
+			track[writeIndex] = v
+			writeIndex++
 		}
 	}
-	return append(track[:writeIndex], gained...)
+	track = track[:writeIndex]
+
+	// Collect all content in found.
+	found := make([]reflect.Value, n)
+	for _, v := range track {
+		switch v.Kind() {
+		case reflect.Array, reflect.Slice, reflect.String:
+			for i := v.Len() - 1; i >= 0; i-- {
+				n--
+				found[n] = v.Index(i)
+			}
+		case reflect.Map:
+			for _, k := range v.MapKeys() {
+				n--
+				found[n] = v.MapIndex(k)
+			}
+		}
+	}
+	return follow(found)
 }
 
-func follow(matches []reflect.Value) []reflect.Value {
+// folow returns the usable content content in track.
+// Pointers are resolved and invalid values are discarded.
+func follow(track []reflect.Value) []reflect.Value {
 	writeIndex := 0
-	for _, v := range matches {
+	for _, v := range track {
 		k := v.Kind()
 		for k == reflect.Ptr || k == reflect.Interface {
 			v = v.Elem()
 			k = v.Kind()
 		}
-
-		if !v.IsValid() {
-			continue
+		if k != reflect.Invalid {
+			track[writeIndex] = v
+			writeIndex++
 		}
-
-		matches[writeIndex] = v
-		writeIndex++
 	}
-	return matches[:writeIndex]
+	return track[:writeIndex]
 }
