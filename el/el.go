@@ -1,111 +1,170 @@
-// Package el offers expression language "Goel".
+// Package el offers expression language "GoEL".
 //
 // The API is error-free by design. Malformed expressions simply have no result.
 //
-// Slash-separated paths are used to select data. Both public and private struct fields can be selected by name.
+// Slash-separated paths are used to select data. All paths are subjected to
+// normalization rules. See http://golang.org/pkg/path#Clean.
 //
-// Elements in indexed types array, slice and string are denoted with a zero based integer literal inbetween
-// square brackets. Keys from map types also use the square bracket notation. Asterisk can be used as a wildcard
-// as in `[*]` to match all entries.
+// Both exported and non-exported struct fields can be selected by name.
+//
+// Elements in indexed types array, slice and string are denoted with a zero
+// based integer literal inbetween square brackets. Key selections from map
+// types also use the square bracket notation. Asterisk can be used as a
+// wildcard as in `[*]` to match all entries.
 package el
 
 import (
 	"reflect"
 )
 
-// Bool returns the result if, and only if, the expression has one value and the value is a boolean type.
+// haveAs returns a value or nil when t is not applicable.
+type haveAs func(t reflect.Type) *reflect.Value
+
+func eval(expr string, root interface{}, factory haveAs) []reflect.Value {
+	if expr == "" || root == nil {
+		return nil
+	}
+
+	switch expr[0] {
+	case '/':
+		return resolve(expr, root, factory)
+	default:
+		return nil
+	}
+}
+
+// Have applies value to the path on root and returns the number of successes.
+//
+// All content in the path is instantiated the fly with the zero value where
+// possible. This implies automatic construction of structs and pointers.
+//
+// For the operation to succeed the targets must be settable conform to the
+// third law of reflection. See http://blog.golang.org/laws-of-reflection#TOC_8.
+// In short, root should be a pointer and the destination should be exported.
+// See https://golang.org/ref/spec#Exported_identifiers.
+func Have(path string, value, root interface{}) (n int) {
+	v := reflect.ValueOf(value)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if !v.IsValid() {
+		return
+	}
+
+	eval(path, root, func(t reflect.Type) *reflect.Value {
+		vt := v.Type()
+		if vt.AssignableTo(t) {
+			n++
+			return &v
+		}
+		if vt.ConvertibleTo(t) {
+			n++
+			c := v.Convert(t)
+			return &c
+		}
+		return nil
+	})
+
+	return n
+}
+
+// Bool returns the result if, and only if, the expression has one value and the
+// value is a boolean type.
 func Bool(expr string, root interface{}) (result bool, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if v.Kind() != reflect.Bool {
-		return
+	if v.Kind() == reflect.Bool {
+		return v.Bool(), true
 	}
-
-	return v.Bool(), true
+	return
 }
 
-// Int returns the result if, and only if, the expression has one value and the value is an integer type.
+// Int returns the result if, and only if, the expression has one value and the
+// value is an integer type.
 func Int(expr string, root interface{}) (result int64, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if k := v.Kind(); k != reflect.Int64 && k != reflect.Int32 && k != reflect.Int && k != reflect.Int8 && k != reflect.Int16 {
-		return
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int(), true
 	}
-
-	return v.Int(), true
+	return
 }
 
-// Uint returns the result if, and only if, the expression has one value and the value is an unsigned integer type.
+// Uint returns the result if, and only if, the expression has one value and the
+// value is an unsigned integer type.
 func Uint(expr string, root interface{}) (result uint64, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if k := v.Kind(); k != reflect.Uint64 && k != reflect.Uint32 && k != reflect.Uint && k != reflect.Uint8 && k != reflect.Uint16 {
-		return
+	switch v.Kind() {
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint(), true
 	}
-
-	return v.Uint(), true
+	return
 }
 
-// Float returns the result if, and only if, the expression has one value and the value is a floating point type.
+// Float returns the result if, and only if, the expression has one value and
+// the value is a floating point type.
 func Float(expr string, root interface{}) (result float64, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if k := v.Kind(); k != reflect.Float64 && k != reflect.Float32 {
-		return
+	switch v.Kind() {
+	case reflect.Float32, reflect.Float64:
+		return v.Float(), true
 	}
-
-	return v.Float(), true
+	return
 }
 
-// Complex returns the result if, and only if, the expression has one value and the value is a complex type.
+// Complex returns the result if, and only if, the expression has one value and
+// the value is a complex type.
 func Complex(expr string, root interface{}) (result complex128, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if k := v.Kind(); k != reflect.Complex128 && k != reflect.Complex64 {
-		return
+	switch v.Kind() {
+	case reflect.Complex64, reflect.Complex128:
+		return v.Complex(), true
 	}
-
-	return v.Complex(), true
+	return
 }
 
-// String returns the result if, and only if, the expression has one value and the value is a string type.
+// String returns the result if, and only if, the expression has one value and
+// the value is a string type.
 func String(expr string, root interface{}) (result string, ok bool) {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
 
 	v := a[0]
-	if v.Kind() != reflect.String {
-		return
+	if v.Kind() == reflect.String {
+		return v.String(), true
 	}
-
-	return v.String(), true
+	return
 }
 
 // Bools returns all values with a boolean type.
 func Bools(expr string, root interface{}) []bool {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -121,14 +180,15 @@ func Bools(expr string, root interface{}) []bool {
 
 // Ints returns all values with an integer type.
 func Ints(expr string, root interface{}) []int64 {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
 
 	b := make([]int64, 0, len(a))
 	for _, v := range a {
-		if k := v.Kind(); k == reflect.Int64 || k == reflect.Int32 || k == reflect.Int || k == reflect.Int8 || k == reflect.Int16 {
+		switch v.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			b = append(b, v.Int())
 		}
 	}
@@ -137,14 +197,15 @@ func Ints(expr string, root interface{}) []int64 {
 
 // Uints returns all values with an unsigned integer type.
 func Uints(expr string, root interface{}) []uint64 {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
 
 	b := make([]uint64, 0, len(a))
 	for _, v := range a {
-		if k := v.Kind(); k == reflect.Uint64 || k == reflect.Uint32 || k == reflect.Uint || k == reflect.Uint8 || k == reflect.Uint16 {
+		switch v.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			b = append(b, v.Uint())
 		}
 	}
@@ -153,14 +214,15 @@ func Uints(expr string, root interface{}) []uint64 {
 
 // Floats returns all values with a floating point type.
 func Floats(expr string, root interface{}) []float64 {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
 
 	b := make([]float64, 0, len(a))
 	for _, v := range a {
-		if k := v.Kind(); k == reflect.Float64 || k == reflect.Float32 {
+		switch v.Kind() {
+		case reflect.Float32, reflect.Float64:
 			b = append(b, v.Float())
 		}
 	}
@@ -169,14 +231,15 @@ func Floats(expr string, root interface{}) []float64 {
 
 // Complexes returns all values with a complex type.
 func Complexes(expr string, root interface{}) []complex128 {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
 
 	b := make([]complex128, 0, len(a))
 	for _, v := range a {
-		if k := v.Kind(); k == reflect.Complex128 || k == reflect.Complex64 {
+		switch v.Kind() {
+		case reflect.Complex64, reflect.Complex128:
 			b = append(b, v.Complex())
 		}
 	}
@@ -185,7 +248,7 @@ func Complexes(expr string, root interface{}) []complex128 {
 
 // Strings returns all values with a string type.
 func Strings(expr string, root interface{}) []string {
-	a := eval(expr, root)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}

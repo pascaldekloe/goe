@@ -3,9 +3,17 @@ package el
 import (
 	"reflect"
 	"testing"
+
+	"verify"
 )
 
-type customString string
+type strType string
+
+// strptr returns a pointer to s.
+// Go does not allow pointers to literals.
+func strptr(s string) *string {
+	return &s
+}
 
 type vals struct {
 	b bool
@@ -51,38 +59,40 @@ var testPV = ptrs{
 
 type goldenCase struct {
 	expr string
-	data interface{}
+	root interface{}
 	want interface{}
 }
 
-var golden = []goldenCase{
+var goldenPaths = []goldenCase{
 	{"/b", testV, testV.b},
 	{"/ip", &testPV, testV.i},
 	{"/sub/sub/u", node{sub: node{sub: testV}}, testV.u},
 	{"/sub/../sub/fp", node{sub: &testPV}, testV.f},
 	{"/sub/./sub/c", &node{sub: &node{sub: &testV}}, testV.c},
-	{"sub/sp", &node{sub: &testPV}, testV.s},
 	{"/", &testPV.sp, testV.s},
-	{".", "hello", "hello"},
-	{"[0]", "hello", uint64('h')},
-	{"/s/[0]", &node{s: []interface{}{testV.i}}, testV.i},
+	{"/.[0]", "hello", uint64('h')},
+	{"/s/.[0]", &node{s: []interface{}{testV.i}}, testV.i},
 	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
-	{"/[true]", map[bool]string{true: "y"}, "y"},
-	{`.["I \x2f O"]`, map[customString]float64{"I / O": 99.8}, 99.8},
-	{".[1]/[2]", map[int]map[uint]string{1: {2: "1.2"}}, "1.2"},
-	{"[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
-	{"/field", testV.s, nil},
-	{"/mis", node{}, nil},
-	{`[yes]`, map[bool]bool{}, nil},
-	{"/sub", node{sub: testV}, nil},
-	{"/[3]", testV, nil},
-	{"/s[4]", node{}, nil},
-	{"/a[5]", node{}, nil},
-	{"[6.66]", map[float64]bool{}, nil},
+	{"/.[true]", map[bool]string{true: "y"}, "y"},
+	{`/.["I \x2f O"]`, map[strType]float64{"I / O": 99.8}, 99.8},
+	{"/.[1]/.[2]", map[int]map[uint]string{1: {2: "1.2"}}, "1.2"},
+	{"/.[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
 }
 
-func TestGolden(t *testing.T) {
-	for _, gold := range golden {
+var goldenPathFails = []goldenCase{
+	{"malformed", node{}, nil},
+	{"/mis", node{}, nil},
+	{"/.[broken]", [2]bool{}, nil},
+	{"/.[yes]", map[bool]bool{}, nil},
+	{"/sub", node{sub: testV}, nil},
+	{"/.[3]", testV, nil},
+	{"/s[4]", node{}, nil},
+	{"/a[5]", node{}, nil},
+	{"/.[6.66]", map[float64]bool{}, nil},
+}
+
+func TestPaths(t *testing.T) {
+	for _, gold := range append(goldenPaths, goldenPathFails...) {
 		testGoldenCase(t, reflect.ValueOf(Bool), gold)
 		testGoldenCase(t, reflect.ValueOf(Int), gold)
 		testGoldenCase(t, reflect.ValueOf(Uint), gold)
@@ -95,7 +105,7 @@ func TestGolden(t *testing.T) {
 func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 	args := []reflect.Value{
 		reflect.ValueOf(gold.expr),
-		reflect.ValueOf(gold.data),
+		reflect.ValueOf(gold.root),
 	}
 	result := f.Call(args)
 
@@ -109,6 +119,19 @@ func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 
 	if got := result[0].Interface(); wantMatch && got != gold.want {
 		t.Errorf("Got %s %#v, want %#v for %q", typ, got, gold.want, gold.expr)
+	}
+}
+
+func BenchmarkPaths(b *testing.B) {
+	todo := b.N
+	for {
+		for _, g := range goldenPaths {
+			String(g.expr, g.root)
+			todo--
+			if todo == 0 {
+				return
+			}
+		}
 	}
 }
 
@@ -132,21 +155,114 @@ func TestWildCards(t *testing.T) {
 		{Strings("/*[*]", data), []string{"a", "b"}},
 	}
 	for _, test := range tests {
-		if !reflect.DeepEqual(test.got, test.want) {
-			t.Errorf("Got %#v, want %#v", test.got, test.want)
-		}
+		verify.Values(t, "wildcard match", test.got, test.want)
 	}
 }
 
-func BenchmarkGoldenCases(b *testing.B) {
+type goldenHave struct {
+	path  string
+	root  interface{}
+	value interface{}
+
+	// updates is the wanted number of updates.
+	updates int
+	// result is the wanted content at path.
+	result []string
+}
+
+func newGoldenHaves() []goldenHave {
+	return []goldenHave{
+		{"/", strptr("hello"), "hell", 1, []string{"hell"}},
+		{"/.", strptr("hello"), "hell", 1, []string{"hell"}},
+		{"/", strptr("hello"), strptr("poin"), 1, []string{"poin"}},
+
+		{"/S", &struct{ S string }{}, "hell", 1, []string{"hell"}},
+		{"/SC", &struct{ SC string }{}, strType("hell"), 1, []string{"hell"}},
+		{"/CC", &struct{ CC strType }{}, strType("hell"), 1, []string{"hell"}},
+		{"/CS", &struct{ CS strType }{}, "hell", 1, []string{"hell"}},
+
+		{"/P", &struct{ P *string }{P: new(string)}, "poin", 1, []string{"poin"}},
+		{"/PP", &struct{ PP **string }{PP: new(*string)}, "doub", 1, []string{"doub"}},
+		{"/PPP", &struct{ PPP ***string }{PPP: new(**string)}, "trip", 1, []string{"trip"}},
+
+		{"/X/S", &struct{ X *struct{ S string } }{}, "hell", 1, []string{"hell"}},
+		{"/X/P", &struct{ X **struct{ P *string } }{}, "poin", 1, []string{"poin"}},
+		{"/X/PP", &struct{ X **struct{ PP **string } }{}, "doub", 1, []string{"doub"}},
+
+		{"/.[1]", &[3]*string{}, "up", 1, []string{"up"}},
+		{"/.[2]", &[]string{"1", "2", "3"}, "up", 1, []string{"up"}},
+		{"/.['p']", &map[byte]*string{}, "in", 1, []string{"in"}},
+		{"/.['q']", &map[byte]*string{'q': strptr("orig")}, "up", 1, []string{"up"}},
+		{"/.['r']", &map[byte]string{}, "in", 1, []string{"in"}},
+		{"/.['s']", &map[byte]string{'s': "orig"}, "up", 1, []string{"up"}},
+		{"/.[*]", &map[byte]*string{'x': strptr("orig"), 'y': nil}, "up", 2, []string{"up", "up"}},
+
+		{"/.[11]/.[12]", &map[int32]map[int64]string{}, "11.12", 1, []string{"11.12"}},
+		{"/.[13]/.[14]", &map[int8]**map[int16]string{}, "13.14", 1, []string{"13.14"}},
+	}
+}
+
+func newGoldenHaveFails() []goldenHave {
+	return []goldenHave{
+		// No expression
+		{"", strptr("hello"), "fail", 0, nil},
+
+		// Nil root
+		{"/", nil, "fail", 0, nil},
+
+		// Nil value
+		{"/", strptr("hello"), nil, 0, []string{"hello"}},
+
+		// Not addresable
+		{"/", "hello", "fail", 0, []string{"hello"}},
+
+		// Too abstract
+		{"/sub/anyField", &node{}, "fail", 0, nil},
+
+		// Initialize with zero value on type mismatch
+		{"/WrongType", &struct{ WrongType *string }{}, 9.98, 0, []string{""}},
+
+		// String modification
+		{"/.[6]", strptr("immutable"), '-', 0, nil},
+
+		// Out of bounds
+		{"/.[7]", &[]*string{}, "fail", 0, nil},
+		{"/.[8]", &[2]string{}, "fail", 0, nil},
+
+		// Non-exported
+		{`/s`, &struct{ s *string }{}, "can't use", 0, nil},
+		{`/a[1]`, &struct{ a [2]string }{}, "can't use", 0, []string{""}},
+		{`/m[3]`, &struct{ m map[int]string }{m: map[int]string{3: "three"}}, "can't use", 0, []string{"three"}},
+		{`/a[*]`, &struct{ a [2]string }{}, "can't use", 0, []string{"", ""}},
+		{`/m[*]`, &struct{ m map[int]string }{m: map[int]string{1: "four"}}, "can't use", 0, []string{"four"}},
+	}
+}
+
+func TestHaves(t *testing.T) {
+	for _, gold := range append(newGoldenHaves(), newGoldenHaveFails()...) {
+		n := Have(gold.path, gold.value, gold.root)
+		if n != gold.updates {
+			t.Errorf("Got n=%d, want %d for %s", n, gold.updates, gold.path)
+		}
+
+		got := Strings(gold.path, gold.root)
+		verify.Values(t, gold.path, got, gold.result)
+	}
+}
+
+func BenchmarkHaves(b *testing.B) {
+	b.StopTimer()
 	todo := b.N
 	for {
-		for _, g := range golden {
-			String(g.expr, g.data)
+		cases := newGoldenHaves()
+		b.StartTimer()
+		for _, g := range cases {
+			Have(g.path, g.value, g.root)
 			todo--
 			if todo == 0 {
 				return
 			}
 		}
+		b.StopTimer()
 	}
 }

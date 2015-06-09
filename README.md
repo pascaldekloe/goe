@@ -1,46 +1,52 @@
-# Go Enterprise
+# Go Enterprise [![GoDoc](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe)
 
-Common enterprise features for the Go programming language.
+Common enterprise features for the Go programming language (golang).
 
 
 ## Expression Language [API](http://godoc.org/github.com/pascaldekloe/goe/el)
 
-Goel expressions provide error free access to object content.
+GoEL expressions provide error free access to Go types.
 It serves as a lightweigth alternative to [unified EL](https://docs.oracle.com/javaee/5/tutorial/doc/bnahq.html), [SpEL](http://docs.spring.io/spring/docs/current/spring-framework-reference/html/expressions.html) or even [XPath](http://www.w3.org/TR/xpath), [CSS selectors](http://www.w3.org/TR/css3-selectors) and friends.
 
 ``` Go
 func FancyOneLiners() {
 	// Single field selection:
-	upper, applicable := el.Bool(`CharSet[0x1F]/isUpperCase`, x)
+	upper, applicable := el.Bool(`/CharSet[0x1F]/isUpperCase`, x)
 
 	// Escape path separator slash:
 	warnings := el.Strings(`/Report/Stats["I\x2fO"]/warn[*]`, x)
+
+	// Data modification:
+	updateCount := el.Have(`/Nodes[*]/Cache/TTL`, x, 3600)
 ```
 
-#### Paths
+#### Selection
 
-Slash-separated [paths](http://golang.org/pkg/path) are used to select data. Both public and private `struct` fields can be selected by name.
+Slash-separated paths are used to select data. All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
 
-Elements in indexed types `array`, `slice` and `string` are denoted with a zero based integer literal inbetween square brackets. Keys from `map` types also use the square bracket notation. Asterisk can be used as a wildcard as in `[*]` to match all entries.
+Both exported and non-exported `struct` fields can be selected by name.
+
+Elements in indexed types `array`, `slice` and `string` are denoted with a zero based number inbetween square brackets. Key selections from `map` types also use the square bracket notation. Asterisk can be used as a wildcard as in `[*]` to match all entries.
 
 ``` BNF
-path            ::= relative-path | "/" relative-path
-relative-path   ::= segment | segment "/" segment
-segment         ::= ".." | field | field key || key
-field           ::= "." | go-field-name
+path            ::= path-component | path path-component
+path-component  ::= "/" segment
+segment         ::= "" | ".." | selection | selection key
+selection       ::= "." | go-field-name
 key             ::= "[" key-selection "]"
 key-selection   ::= "*" | go-literal
 ```
 
 #### Performance
 
-The implementation is highly optimized for performance. No need to precompile expressions.
+The implementation is optimized for performance. No need to precompile expressions.
 
-``` Shell
-# go test -bench=GoldenCases -benchmem
+```
+# go test -bench=. -benchmem
 PASS
-BenchmarkGoldenCases	 2000000	       732 ns/op	      97 B/op	       4 allocs/op
-ok  	el	2.212s
+BenchmarkPaths	 1000000	      1177 ns/op	     212 B/op	       6 allocs/op
+BenchmarkHaves	 2000000	       932 ns/op	     331 B/op	      10 allocs/op
+ok  	el	7.640s
 ```
 
 
