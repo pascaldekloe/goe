@@ -34,9 +34,12 @@ type ptrs struct {
 }
 
 type node struct {
-	sub interface{}
-	a   [2]interface{}
-	s   []interface{}
+	Name  *string
+	Child *node
+	child *node
+	X     interface{}
+	a     [2]interface{}
+	s     []interface{}
 }
 
 var testV = vals{
@@ -66,9 +69,9 @@ type goldenCase struct {
 var goldenPaths = []goldenCase{
 	{"/b", testV, testV.b},
 	{"/ip", &testPV, testV.i},
-	{"/sub/sub/u", node{sub: node{sub: testV}}, testV.u},
-	{"/sub/../sub/fp", node{sub: &testPV}, testV.f},
-	{"/sub/./sub/c", &node{sub: &node{sub: &testV}}, testV.c},
+	{"/X/X/u", node{X: node{X: testV}}, testV.u},
+	{"/X/../X/fp", node{X: &testPV}, testV.f},
+	{"/X/./X/c", &node{X: &node{X: &testV}}, testV.c},
 	{"/", &testPV.sp, testV.s},
 	{"/.[0]", "hello", uint64('h')},
 	{"/s/.[0]", &node{s: []interface{}{testV.i}}, testV.i},
@@ -79,12 +82,15 @@ var goldenPaths = []goldenCase{
 	{"/.[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
 }
 
+var nilPointer *node
+
 var goldenPathFails = []goldenCase{
+	{"/Child/Name", nilPointer, nil},
 	{"malformed", node{}, nil},
 	{"/mis", node{}, nil},
 	{"/.[broken]", [2]bool{}, nil},
 	{"/.[yes]", map[bool]bool{}, nil},
-	{"/sub", node{sub: testV}, nil},
+	{"/X", node{X: testV}, nil},
 	{"/.[3]", testV, nil},
 	{"/s[4]", node{}, nil},
 	{"/a[5]", node{}, nil},
@@ -189,6 +195,8 @@ func newGoldenHaves() []goldenHave {
 		{"/X/P", &struct{ X **struct{ P *string } }{}, "poin", 1, []string{"poin"}},
 		{"/X/PP", &struct{ X **struct{ PP **string } }{}, "doub", 1, []string{"doub"}},
 
+		{"/Child/Child/Child/Name", &node{}, "Grand Grand", 1, []string{"Grand Grand"}},
+
 		{"/.[1]", &[3]*string{}, "up", 1, []string{"up"}},
 		{"/.[2]", &[]string{"1", "2", "3"}, "up", 1, []string{"up"}},
 		{"/.['p']", &map[byte]*string{}, "in", 1, []string{"in"}},
@@ -217,7 +225,7 @@ func newGoldenHaveFails() []goldenHave {
 		{"/", "hello", "fail", 0, []string{"hello"}},
 
 		// Too abstract
-		{"/sub/anyField", &node{}, "fail", 0, nil},
+		{"/X/anyField", &node{}, "fail", 0, nil},
 
 		// Initialize with zero value on type mismatch
 		{"/WrongType", &struct{ WrongType *string }{}, 9.98, 0, []string{""}},
@@ -231,10 +239,12 @@ func newGoldenHaveFails() []goldenHave {
 
 		// Non-exported
 		{`/s`, &struct{ s *string }{}, "can't use", 0, nil},
+		{`/child/Name`, &node{}, "can't use", 0, nil},
 		{`/a[1]`, &struct{ a [2]string }{}, "can't use", 0, []string{""}},
 		{`/m[3]`, &struct{ m map[int]string }{m: map[int]string{3: "three"}}, "can't use", 0, []string{"three"}},
 		{`/a[*]`, &struct{ a [2]string }{}, "can't use", 0, []string{"", ""}},
 		{`/m[*]`, &struct{ m map[int]string }{m: map[int]string{1: "four"}}, "can't use", 0, []string{"four"}},
+		{`/m[4]`, &struct{ m map[int]string }{}, "can't use", 0, nil},
 	}
 }
 
