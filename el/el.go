@@ -39,11 +39,11 @@ func eval(expr string, root interface{}, doBuild bool) []value {
 // third law of reflection. See http://blog.golang.org/laws-of-reflection#TOC_8.
 // In short, root should be a pointer and the destination should be exported.
 // See https://golang.org/ref/spec#Exported_identifiers.
-func Have(path string, want, root interface{}) (n int) {
+func Have(root interface{}, path string, want interface{}) (n int) {
 	values := eval(path, root, true)
 
 	var w reflect.Value
-	if wp := follow(reflect.ValueOf(want), true); wp == nil {
+	if wp := follow(reflect.ValueOf(want), false); wp == nil {
 		return
 	} else {
 		w = (*wp).(reflect.Value)

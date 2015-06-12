@@ -250,7 +250,7 @@ func newGoldenHaveFails() []goldenHave {
 
 func TestHaves(t *testing.T) {
 	for _, gold := range append(newGoldenHaves(), newGoldenHaveFails()...) {
-		n := Have(gold.path, gold.value, gold.root)
+		n := Have(gold.root, gold.path, gold.value)
 		if n != gold.updates {
 			t.Errorf("Got n=%d, want %d for %s", n, gold.updates, gold.path)
 		}
@@ -267,7 +267,7 @@ func BenchmarkHaves(b *testing.B) {
 		cases := newGoldenHaves()
 		b.StartTimer()
 		for _, g := range cases {
-			Have(g.path, g.value, g.root)
+			Have(g.root, g.path, g.value)
 			todo--
 			if todo == 0 {
 				return
