@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"runtime"
+	"strings"
 )
 
 // travel is the verification state
@@ -59,7 +60,13 @@ func (t *travel) report(name string) string {
 			buf.WriteString(d.path)
 			buf.WriteString(": ")
 		}
-		buf.WriteString(d.msg)
+		lines := strings.Split(d.msg, "\n")
+		buf.WriteString(lines[0])
+		for _, l := range lines[1:] {
+			buf.WriteByte('\n')
+			buf.WriteString(strings.Repeat(" ", len(d.path)+2))
+			buf.WriteString(l)
+		}
 	}
 
 	return buf.String()

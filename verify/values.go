@@ -1,7 +1,9 @@
 package verify
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -22,17 +24,17 @@ func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
 func (t *travel) values(got, want reflect.Value, path []*segment) {
 	if !want.IsValid() {
 		if got.IsValid() {
-			t.differ(path, "unwanted %s", got.Type())
+			t.differ(path, "Unwanted %s", got.Type())
 		}
 		return
 	}
 	if !got.IsValid() {
-		t.differ(path, "missing %s", want.Type())
+		t.differ(path, "Missing %s", want.Type())
 		return
 	}
 
 	if got.Type() != want.Type() {
-		t.differ(path, "types differ, %s != %s", got.Type(), want.Type())
+		t.differ(path, "Got type %s, want %s", got.Type(), want.Type())
 		return
 	}
 
@@ -50,7 +52,7 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 	case reflect.Slice, reflect.Array:
 		n := got.Len()
 		if n != want.Len() {
-			t.differ(path, "got %d elements, want %d", n, want.Len())
+			t.differ(path, "Got %d elements, want %d", n, want.Len())
 			return
 		}
 
@@ -84,18 +86,12 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		path = path[:len(path)-1]
 
 	case reflect.Func:
-		t.differ(path, "can't compare functions")
-
-	case reflect.String:
-		a, b := got.String(), want.String()
-		if a != b {
-			t.differ(path, "%q != %q", a, b)
-		}
+		t.differ(path, "Can't compare functions")
 
 	default:
 		a, b := asInterface(got), asInterface(want)
 		if a != b {
-			t.differ(path, "%v != %v", a, b)
+			t.differ(path, differMsg(a, b))
 		}
 
 	}
@@ -111,10 +107,6 @@ func applyKeySeg(dst *segment, key reflect.Value) {
 }
 
 func asInterface(v reflect.Value) interface{} {
-	if v.CanInterface() {
-		return v.Interface()
-	}
-
 	switch v.Kind() {
 	case reflect.Bool:
 		return v.Bool()
@@ -126,7 +118,51 @@ func asInterface(v reflect.Value) interface{} {
 		return v.Float()
 	case reflect.Complex64, reflect.Complex128:
 		return v.Complex()
+	case reflect.String:
+		return v.String()
+	default:
+		return v.Interface()
 	}
+}
 
-	panic("verify: can't interface kind " + v.Kind().String())
+func differMsg(got, want interface{}) string {
+	switch got.(type) {
+	case int64:
+		g, w := got.(int64), want.(int64)
+		if g < 0xA && g > -0xA && w < 0xA && w > -0xA {
+			return fmt.Sprintf("Got %d, want %d", got, want)
+		}
+		return fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", got, got, want, want)
+	case uint64:
+		g, w := got.(uint64), want.(uint64)
+		if g < 0xA && w < 0xA {
+			return fmt.Sprintf("Got %d, want %d", got, want)
+		}
+		return fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", got, got, want, want)
+	case float64, complex128:
+		return fmt.Sprintf("Got %f (%e), want %f (%e)", got, got, want, want)
+	case string:
+		a, b := got.(string), want.(string)
+		if len(a) > len(b) {
+			a, b = b, a
+		}
+		r := strings.NewReader(b)
+
+		var differAt int
+		for i, c := range a {
+			o, _, _ := r.ReadRune()
+			if c != o {
+				differAt = i
+				break
+			}
+		}
+
+		format := "Got %q, want %q"
+		if differAt > 0 {
+			format += fmt.Sprintf("\n     %s^", strings.Repeat(" ", differAt))
+		}
+		return fmt.Sprintf(format, got, want)
+	default:
+		return fmt.Sprintf("Got %v, want %v", got, want)
+	}
 }

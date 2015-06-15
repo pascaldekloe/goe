@@ -53,12 +53,12 @@ ok  	el	3.397s
 ## Verification [API](http://godoc.org/github.com/pascaldekloe/goe/verify)
 
 Test assertions on big objects can be cumbersome with ```reflect.DeepEquals``` and ```"Got %#v, want %#v"```.
-Package `verify` offers convenience with reporting. For example `verify.Values(t, "employee", got, want)` might print:
+Package `verify` offers convenience with reporting. For example `verify.Values(t, "character", got, want)` might print:
 
 ```
 --- FAIL: TestValuesDemo (0.00s)
-	values.go:15: verification for employee at demo_test.go:72:
-		/Title: "Agent" != "Commander"
-		/Tooling/Expired["ppk"]: missing time.Time
-		/UserAttributes[2]/Label: "Car" != "Vehicle"
+	values.go:15: verification for character at demo_test.go:72:
+		/Novel[6]/Title: Got "Gold Finger", want "Goldfinger"
+		                          ^
+		/Film[20]/Year: Got 1953 (0x7a1), want 2006 (0x7d6)
 ```
