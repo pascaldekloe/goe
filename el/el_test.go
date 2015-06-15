@@ -146,6 +146,7 @@ func TestWildCards(t *testing.T) {
 		a: [2]interface{}{99, 100},
 		s: []interface{}{"a", "b", 3},
 	}
+	valueMix := []interface{}{testV.b, testV.i, testV.u, testV.f, testV.c, testV.s, testV}
 
 	tests := []struct {
 		got, want interface{}
@@ -159,10 +160,16 @@ func TestWildCards(t *testing.T) {
 
 		{Ints("/a[*]", data), []int64{99, 100}},
 		{Strings("/*[*]", data), []string{"a", "b"}},
+
+		{Any("/.[*]", valueMix), valueMix},
+		{Any("/", valueMix), []interface{}{valueMix}},
+		{Any("/MisMatch", valueMix), []interface{}(nil)},
 	}
+
 	for _, test := range tests {
 		verify.Values(t, "wildcard match", test.got, test.want)
 	}
+
 }
 
 type goldenHave struct {

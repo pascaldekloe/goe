@@ -17,6 +17,7 @@ type value interface {
 	IsNil() bool
 	Elem() reflect.Value
 	CanInterface() bool
+	Interface() interface{}
 	CanSet() bool
 	Set(reflect.Value)
 	NumField() int
@@ -253,12 +254,13 @@ func (w *mapWrap) IsValid() bool                          { return w.v.IsValid()
 func (w *mapWrap) IsNil() bool                            { return w.v.IsNil() }
 func (w *mapWrap) Elem() reflect.Value                    { return w.v.Elem() }
 func (w *mapWrap) CanInterface() bool                     { return w.v.CanInterface() }
+func (w *mapWrap) Interface() interface{}                 { return w.v.Interface() }
 func (w *mapWrap) NumField() int                          { return w.v.NumField() }
 func (w *mapWrap) Field(i int) reflect.Value              { return w.v.Field(i) }
 func (w *mapWrap) FieldByName(name string) reflect.Value  { return w.v.FieldByName(name) }
 func (w *mapWrap) Len() int                               { return w.v.Len() }
 func (w *mapWrap) Index(i int) reflect.Value              { return w.v.Index(i) }
-func (w *mapWrap) MapIndex(i reflect.Value) reflect.Value { return w.v.MapIndex(i) }
+func (w *mapWrap) MapIndex(k reflect.Value) reflect.Value { return w.v.MapIndex(k) }
 func (w *mapWrap) SetMapIndex(k, v reflect.Value)         { w.v.SetMapIndex(k, v) }
 func (w *mapWrap) MapKeys() []reflect.Value               { return w.v.MapKeys() }
 func (w *mapWrap) Bool() bool                             { return w.v.Bool() }
