@@ -17,14 +17,19 @@ import (
 	"reflect"
 )
 
-func eval(expr string, root interface{}, doBuild bool) []value {
+// finisher deals with post modification requirements.
+type finisher interface {
+	Finish()
+}
+
+func eval(expr string, root interface{}, buildCallbacks *[]finisher) []reflect.Value {
 	if expr == "" {
 		return nil
 	}
 
 	switch expr[0] {
 	case '/':
-		return resolve(expr, root, doBuild)
+		return resolve(expr, root, buildCallbacks)
 	default:
 		return nil
 	}
@@ -40,13 +45,13 @@ func eval(expr string, root interface{}, doBuild bool) []value {
 // In short, root should be a pointer and the destination should be exported.
 // See https://golang.org/ref/spec#Exported_identifiers
 func Have(root interface{}, path string, want interface{}) (n int) {
-	values := eval(path, root, true)
+	var buildCallbacks []finisher
 
-	var w reflect.Value
-	if wp := follow(reflect.ValueOf(want), false); wp == nil {
+	values := eval(path, root, &buildCallbacks)
+
+	w := follow(reflect.ValueOf(want), false)
+	if w == nil {
 		return
-	} else {
-		w = (*wp).(reflect.Value)
 	}
 	wt := w.Type()
 
@@ -57,7 +62,7 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 
 		switch vt := v.Type(); {
 		case wt.AssignableTo(vt):
-			v.Set(w)
+			v.Set(*w)
 			n++
 		case wt.ConvertibleTo(vt):
 			v.Set(w.Convert(vt))
@@ -65,13 +70,17 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 		}
 	}
 
+	for _, c := range buildCallbacks {
+                c.Finish()
+        }
+
 	return n
 }
 
 // Bool returns the evaluation result if, and only if, the result has one value
 // and the value is a boolean type.
 func Bool(expr string, root interface{}) (result bool, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -86,7 +95,7 @@ func Bool(expr string, root interface{}) (result bool, ok bool) {
 // Int returns the evaluation result if, and only if, the result has one value
 // and the value is an integer type.
 func Int(expr string, root interface{}) (result int64, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -102,7 +111,7 @@ func Int(expr string, root interface{}) (result int64, ok bool) {
 // Uint returns the evaluation result if, and only if, the result has one value
 // and the value is an unsigned integer type.
 func Uint(expr string, root interface{}) (result uint64, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -118,7 +127,7 @@ func Uint(expr string, root interface{}) (result uint64, ok bool) {
 // Float returns the evaluation result if, and only if, the result has one value
 // and the value is a floating point type.
 func Float(expr string, root interface{}) (result float64, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -134,7 +143,7 @@ func Float(expr string, root interface{}) (result float64, ok bool) {
 // Complex returns the evaluation result if, and only if, the result has one
 // value and the value is a complex type.
 func Complex(expr string, root interface{}) (result complex128, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -150,7 +159,7 @@ func Complex(expr string, root interface{}) (result complex128, ok bool) {
 // String returns the evaluation result if, and only if, the result has one
 // value and the value is a string type.
 func String(expr string, root interface{}) (result string, ok bool) {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) != 1 {
 		return
 	}
@@ -164,7 +173,7 @@ func String(expr string, root interface{}) (result string, ok bool) {
 
 // Any returns the evaluation result values.
 func Any(expr string, root interface{}) []interface{} {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -195,7 +204,7 @@ func Any(expr string, root interface{}) []interface{} {
 
 // Bools returns the evaluation result values of a boolean type.
 func Bools(expr string, root interface{}) []bool {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -211,7 +220,7 @@ func Bools(expr string, root interface{}) []bool {
 
 // Ints returns the evaluation result values of an integer type.
 func Ints(expr string, root interface{}) []int64 {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -228,7 +237,7 @@ func Ints(expr string, root interface{}) []int64 {
 
 // Uints returns the evaluation result values of an unsigned integer type.
 func Uints(expr string, root interface{}) []uint64 {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -245,7 +254,7 @@ func Uints(expr string, root interface{}) []uint64 {
 
 // Floats returns the evaluation result values of a floating point type.
 func Floats(expr string, root interface{}) []float64 {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -262,7 +271,7 @@ func Floats(expr string, root interface{}) []float64 {
 
 // Complexes returns the evaluation result values of a complex type.
 func Complexes(expr string, root interface{}) []complex128 {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}
@@ -279,7 +288,7 @@ func Complexes(expr string, root interface{}) []complex128 {
 
 // Strings returns the evaluation result values of a string type.
 func Strings(expr string, root interface{}) []string {
-	a := eval(expr, root, false)
+	a := eval(expr, root, nil)
 	if len(a) == 0 {
 		return nil
 	}

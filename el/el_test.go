@@ -214,6 +214,7 @@ func newGoldenHaves() []goldenHave {
 
 		{"/.[11]/.[12]", &map[int32]map[int64]string{}, "11.12", 1, []string{"11.12"}},
 		{"/.[13]/.[14]", &map[int8]**map[int16]string{}, "13.14", 1, []string{"13.14"}},
+		{"/.['w']/X/Y", &map[byte]struct{X struct{Y ***string}}{}, "z", 1, []string{"z"}},
 	}
 }
 

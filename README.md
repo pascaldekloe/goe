@@ -44,9 +44,9 @@ The implementation is optimized for performance. No need to precompile expressio
 ```
 # go test -bench=. -benchmem
 PASS
-BenchmarkPaths-8	 1000000	      1002 ns/op	     326 B/op	      12 allocs/op
-BenchmarkHaves-8	 1000000	      1423 ns/op	     478 B/op	      16 allocs/op
-ok  	el	3.397s
+BenchmarkPaths-8	 2000000	       805 ns/op	     280 B/op	       9 allocs/op
+BenchmarkHaves-8	 1000000	      1155 ns/op	     402 B/op	      12 allocs/op
+ok  	el	4.476s
 ```
 
 
