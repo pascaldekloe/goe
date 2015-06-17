@@ -3,7 +3,7 @@
 // The API is error-free by design. Malformed expressions simply have no result.
 //
 // Slash-separated paths are used to select data. All paths are subjected to
-// normalization rules. See http://golang.org/pkg/path#Clean.
+// normalization rules. See http://golang.org/pkg/path#Clean
 //
 // Both exported and non-exported struct fields can be selected by name.
 //
@@ -41,9 +41,9 @@ func eval(expr string, root interface{}, buildCallbacks *[]finisher) []reflect.V
 // possible. This implies automatic construction of structs, pointers and maps.
 //
 // For the operation to succeed the targets must be settable conform to the
-// third law of reflection. See http://blog.golang.org/laws-of-reflection#TOC_8.
+// third law of reflection.
 // In short, root should be a pointer and the destination should be exported.
-// See https://golang.org/ref/spec#Exported_identifiers
+// See http://blog.golang.org/laws-of-reflection#TOC_8%2E
 func Have(root interface{}, path string, want interface{}) (n int) {
 	var buildCallbacks []finisher
 

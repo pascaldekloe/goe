@@ -17,7 +17,7 @@ func FancyOneLiners() {
 	warnings := el.Strings(`/Report/Stats["I\x2fO"]/warn[*]`, x)
 
 	// Data modification:
-	updateCount := el.Have(`/Nodes[*]/Cache/TTL`, x, 3600)
+	updateCount := el.Have(x, `/Nodes[*]/Cache/TTL`, 3600)
 ```
 
 #### Selection
