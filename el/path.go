@@ -26,7 +26,9 @@ func resolve(expr string, root interface{}, buildCallbacks *[]finisher) []reflec
 		if last := len(selection) - 1; selection[last] == ']' {
 			if i := strings.IndexByte(selection, '['); i >= 0 {
 				key = selection[i+1 : last]
-				selection = selection[:i]
+				if key != "" {
+					selection = selection[:i]
+				}
 			}
 		}
 
@@ -84,7 +86,7 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 	return track[:writeIndex]
 }
 
-// followField returns all elements matching s from track.
+// followKey returns all elements matching s from track.
 func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []reflect.Value {
 	if s == "*" {
 		// Count elements with n and filter keyed types in track while we're at it.
@@ -191,7 +193,7 @@ func follow(v reflect.Value, doBuild bool) *reflect.Value {
 }
 
 // mapWrap re-SetMapIndex elements because modifications on elements won't apply without it.
-type mapWrap struct {m, k, v *reflect.Value}
+type mapWrap struct{ m, k, v *reflect.Value }
 
 func (w *mapWrap) Finish() {
 	w.m.SetMapIndex(*w.k, *w.v)
@@ -222,10 +224,6 @@ func followMap(m reflect.Value, key reflect.Value, buildCallbacks *[]finisher) *
 
 // parseLiteral returns the interpretation of s for t or nil on failure.
 func parseLiteral(s string, t reflect.Type) *reflect.Value {
-	if s == "" {
-		return nil
-	}
-
 	var v reflect.Value
 
 	switch t.Kind() {
@@ -271,12 +269,11 @@ func parseLiteral(s string, t reflect.Type) *reflect.Value {
 
 	default:
 		p := reflect.New(t)
-		ptr := p.Interface()
-		if n, _ := fmt.Sscan(s, ptr); n == 1 {
-			v := reflect.ValueOf(ptr).Elem()
-			return &v
+		if n, _ := fmt.Sscan(s, p.Interface()); n == 1 {
+			v = p.Elem()
+		} else {
+			return nil
 		}
-		return nil
 
 	}
 

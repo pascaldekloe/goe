@@ -158,6 +158,14 @@ func TestWildCards(t *testing.T) {
 		{Complexes("/*", testV), []complex128{testV.c}},
 		{Strings("/*", testV), []string{testV.s}},
 
+		{Any("/*", ptrs{}), []interface{}(nil)},
+		{Bools("/*", ptrs{}), []bool(nil)},
+		{Ints("/*", ptrs{}), []int64(nil)},
+		{Uints("/*", ptrs{}), []uint64(nil)},
+		{Floats("/*", ptrs{}), []float64(nil)},
+		{Complexes("/*", ptrs{}), []complex128(nil)},
+		{Strings("/*", ptrs{}), []string(nil)},
+
 		{Ints("/a[*]", data), []int64{99, 100}},
 		{Strings("/*[*]", data), []string{"a", "b"}},
 
@@ -207,14 +215,14 @@ func newGoldenHaves() []goldenHave {
 		{"/.[1]", &[3]*string{}, "up", 1, []string{"up"}},
 		{"/.[2]", &[]string{"1", "2", "3"}, "up", 1, []string{"up"}},
 		{"/.['p']", &map[byte]*string{}, "in", 1, []string{"in"}},
-		{"/.['q']", &map[byte]*string{'q': strptr("orig")}, "up", 1, []string{"up"}},
-		{"/.['r']", &map[byte]string{}, "in", 1, []string{"in"}},
-		{"/.['s']", &map[byte]string{'s': "orig"}, "up", 1, []string{"up"}},
+		{"/.['q']", &map[int16]*string{'q': strptr("orig")}, "up", 1, []string{"up"}},
+		{"/.['r']", &map[uint]string{}, "in", 1, []string{"in"}},
+		{"/.['s']", &map[int64]string{'s': "orig"}, "up", 1, []string{"up"}},
 		{"/.[*]", &map[byte]*string{'x': strptr("orig"), 'y': nil}, "up", 2, []string{"up", "up"}},
 
 		{"/.[11]/.[12]", &map[int32]map[int64]string{}, "11.12", 1, []string{"11.12"}},
 		{"/.[13]/.[14]", &map[int8]**map[int16]string{}, "13.14", 1, []string{"13.14"}},
-		{"/.['w']/X/Y", &map[byte]struct{X struct{Y ***string}}{}, "z", 1, []string{"z"}},
+		{"/.['w']/X/Y", &map[byte]struct{ X struct{ Y ***string } }{}, "z", 1, []string{"z"}},
 	}
 }
 
@@ -235,24 +243,43 @@ func newGoldenHaveFails() []goldenHave {
 		// Too abstract
 		{"/X/anyField", &node{}, "fail", 0, nil},
 
-		// Initialize with zero value on type mismatch
-		{"/WrongType", &struct{ WrongType *string }{}, 9.98, 0, []string{""}},
+		// Wrong type
+		{"/Sp", &struct{ Sp *string }{}, 9.98, 0, []string{""}},
 
 		// String modification
 		{"/.[6]", strptr("immutable"), '-', 0, nil},
 
 		// Out of bounds
-		{"/.[7]", &[]*string{}, "fail", 0, nil},
 		{"/.[8]", &[2]string{}, "fail", 0, nil},
 
+		// Malformed map keys
+		{"/Sk[''']", &struct{ Sk map[string]string }{}, "fail", 0, nil},
+		{"/Ik[''']", &struct{ Ik map[int]string }{}, "fail", 0, nil},
+		{"/Ik[z]", &struct{ Ik map[int]string }{}, "fail", 0, nil},
+		{"/Uk[''']", &struct{ Uk map[uint]string }{}, "fail", 0, nil},
+		{"/Uk[z]", &struct{ Uk map[uint]string }{}, "fail", 0, nil},
+		{"/Fk[z]", &struct{ Fk map[float32]string }{}, "fail", 0, nil},
+		{"/Ck[z]", &struct{ Ck map[complex128]string }{}, "fail", 0, nil},
+		{"/Ck[]", &struct{ Ck map[complex128]string }{}, "fail", 0, nil},
+
 		// Non-exported
-		{`/s`, &struct{ s *string }{}, "can't use", 0, nil},
-		{`/child/Name`, &node{}, "can't use", 0, nil},
-		{`/a[1]`, &struct{ a [2]string }{}, "can't use", 0, []string{""}},
-		{`/m[3]`, &struct{ m map[int]string }{m: map[int]string{3: "three"}}, "can't use", 0, []string{"three"}},
-		{`/a[*]`, &struct{ a [2]string }{}, "can't use", 0, []string{"", ""}},
-		{`/m[*]`, &struct{ m map[int]string }{m: map[int]string{1: "four"}}, "can't use", 0, []string{"four"}},
-		{`/m[4]`, &struct{ m map[int]string }{}, "can't use", 0, nil},
+		{`/child/Name`, &node{}, "fail", 0, nil},
+		{`/ns`, &struct{ ns *string }{}, "fail", 0, nil},
+
+		// Non-exported array
+		{`/na[0]`, &struct{ na [2]string }{}, "fail", 0, []string{""}},
+		{`/na[1]`, &struct{ na [2]*string }{}, "fail", 0, nil},
+		{`/na[*]`, &struct{ na [2]string }{}, "fail", 0, []string{"", ""}},
+
+		// Non-exported slice
+		{`/ns[0]`, &struct{ ns []string }{}, "fail", 0, nil},
+		{`/ns[1]`, &struct{ ns []*string }{ns: []*string{nil, strptr("b")}}, "fail", 0, []string{"b"}},
+		{`/ns[*]`, &struct{ ns []string }{ns: []string{"a"}}, "fail", 0, []string{"a"}},
+
+		// Non-exported map
+		{`/nm[0]`, &struct{ nm map[int]string }{}, "fail", 0, nil},
+		{`/nm[1]`, &struct{ nm map[int]*string }{nm: map[int]*string{1: strptr("b")}}, "fail", 0, []string{"b"}},
+		{`/nm[*]`, &struct{ nm map[int]string }{nm: map[int]string{2: "c"}}, "fail", 0, []string{"c"}},
 	}
 }
 

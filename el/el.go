@@ -71,8 +71,8 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 	}
 
 	for _, c := range buildCallbacks {
-                c.Finish()
-        }
+		c.Finish()
+	}
 
 	return n
 }
@@ -181,8 +181,6 @@ func Any(expr string, root interface{}) []interface{} {
 	b := make([]interface{}, 0, len(a))
 	for _, v := range a {
 		switch v.Kind() {
-		case reflect.Invalid:
-			// Can't interface
 		case reflect.Bool:
 			b = append(b, v.Bool())
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -193,6 +191,8 @@ func Any(expr string, root interface{}) []interface{} {
 			b = append(b, v.Float())
 		case reflect.Complex64, reflect.Complex128:
 			b = append(b, v.Complex())
+		case reflect.String:
+			b = append(b, v.String())
 		default:
 			if v.CanInterface() {
 				b = append(b, v.Interface())
