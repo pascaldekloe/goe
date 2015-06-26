@@ -131,9 +131,16 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 	for _, v := range track {
 		switch v.Kind() {
 		case reflect.Array, reflect.Slice, reflect.String:
-			i, err := strconv.ParseUint(s, 0, 64)
-			if err == nil && i < uint64(v.Len()) {
-				if x := follow(v.Index(int(i)), buildCallbacks != nil); x != nil {
+			if k, err := strconv.ParseUint(s, 0, 64); err == nil && k < (1<<31) {
+				i := int(k)
+				if i >= v.Len() {
+					if v.Kind() != reflect.Slice || !v.CanSet() {
+						continue
+					}
+					n := i - v.Len() + 1
+					v.Set(reflect.AppendSlice(v, reflect.MakeSlice(v.Type(), n, n)))
+				}
+				if x := follow(v.Index(i), buildCallbacks != nil); x != nil {
 					track[writeIndex] = *x
 					writeIndex++
 				}

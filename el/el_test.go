@@ -214,6 +214,7 @@ func newGoldenHaves() []goldenHave {
 
 		{"/.[1]", &[3]*string{}, "up", 1, []string{"up"}},
 		{"/.[2]", &[]string{"1", "2", "3"}, "up", 1, []string{"up"}},
+		{"/.[3]", &[]*string{}, "in", 1, []string{"in"}},
 		{"/.['p']", &map[byte]*string{}, "in", 1, []string{"in"}},
 		{"/.['q']", &map[int16]*string{'q': strptr("orig")}, "up", 1, []string{"up"}},
 		{"/.['r']", &map[uint]string{}, "in", 1, []string{"in"}},
