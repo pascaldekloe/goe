@@ -128,7 +128,7 @@ func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 	}
 }
 
-func BenchmarkPaths(b *testing.B) {
+func BenchmarkLookups(b *testing.B) {
 	todo := b.N
 	for {
 		for _, g := range goldenPaths {
@@ -296,7 +296,7 @@ func TestHaves(t *testing.T) {
 	}
 }
 
-func BenchmarkHaves(b *testing.B) {
+func BenchmarkModifies(b *testing.B) {
 	b.StopTimer()
 	todo := b.N
 	for {

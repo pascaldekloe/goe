@@ -2,15 +2,14 @@
 //
 // The API is error-free by design. Malformed expressions simply have no result.
 //
-// Slash-separated paths are used to select data. All paths are subjected to
-// normalization rules. See http://golang.org/pkg/path#Clean
+// Slash-separated paths specify content for lookups or modification. All paths
+// are subjected to normalization rules. See http://golang.org/pkg/path#Clean
 //
-// Both exported and non-exported struct fields can be selected by name.
+// Both exported and non-exported `struct` fields can be selected by name.
 //
 // Elements in indexed types array, slice and string are denoted with a zero
-// based integer literal inbetween square brackets. Key selections from map
-// types also use the square bracket notation. Asterisk can be used as a
-// wildcard as in `[*]` to match all entries.
+// based number inbetween square brackets. Key selections from map types also
+// use the square bracket notation. Asterisk is treated as a wildcard.
 package el
 
 import (
