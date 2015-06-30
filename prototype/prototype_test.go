@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"verify"
+	"github.com/pascaldekloe/goe/verify"
 )
 
 var fatals []string

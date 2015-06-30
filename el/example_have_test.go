@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"el"
+	"github.com/pascaldekloe/goe/el"
 )
 
 type Feed struct {

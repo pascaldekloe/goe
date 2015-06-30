@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"verify"
+	"github.com/pascaldekloe/goe/verify"
 )
 
 func TestFromFileURL(t *testing.T) {

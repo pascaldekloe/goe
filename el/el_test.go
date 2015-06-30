@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"verify"
+	"github.com/pascaldekloe/goe/verify"
 )
 
 type strType string

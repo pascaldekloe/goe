@@ -10,7 +10,7 @@ import (
 	"os"
 	"reflect"
 
-	"el"
+	"github.com/pascaldekloe/goe/el"
 )
 
 // Template is an immutable prototype definition.
