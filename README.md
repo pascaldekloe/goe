@@ -1,4 +1,4 @@
-# Go Enterprise [![GoDoc](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe)
+# Go Enterprise [![GoDoc](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe) [![Build Status](https://travis-ci.org/pascaldekloe/goe.svg?branch=master)](https://travis-ci.org/pascaldekloe/goe)
 
 Common enterprise features for the Go programming language (golang).
 
@@ -24,7 +24,7 @@ func FancyOneLiners() {
 
 #### Selection
 
-Slash-separated paths specify content for lookups or [modification](http://godoc.org/github.com/pascaldekloe/goe/el/#example_Have). All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
+Slash-separated paths specify content for lookups or [modification](http://godoc.org/github.com/pascaldekloe/goe/el#Have). All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
 
 Both exported and non-exported `struct` fields can be selected by name.
 
