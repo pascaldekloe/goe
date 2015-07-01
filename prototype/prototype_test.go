@@ -43,7 +43,7 @@ func TestMutations(t *testing.T) {
 
 func TestPathIn(t *testing.T) {
 	Fatalf = t.Fatalf
-	templates := New(new(TestItem)).Path("/Title").In("First", "Second")
+	templates := New(new(TestItem)).HaveIn("/Title", "First", "Second")
 
 	got := make([]*TestItem, len(templates))
 	for i, _ := range templates {
@@ -64,9 +64,9 @@ func TestPathIn(t *testing.T) {
 
 func TestWithToFail(t *testing.T) {
 	recordFatals()
-	New(new(TestItem)).Path("/DoesNotExist").To(42)
+	New(new(TestItem)).Have("/DoesNotExist", 42)
 
-	want := []string{"prototype: can't apply 42 on /DoesNotExist"}
+	want := []string{"prototype: can't apply /DoesNotExist on *prototype.TestItem"}
 	verify.Values(t, "messages", fatals, want)
 }
 
