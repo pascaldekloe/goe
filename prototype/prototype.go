@@ -90,9 +90,24 @@ func (t *gobt) BuildXML() []byte {
 
 func (t *gobt) Have(path string, value interface{}) Template {
 	x := t.Build()
-	if n := el.Have(&x, path, value); n == 0 {
+
+	var notPtr bool
+	if t := reflect.TypeOf(x); t.Kind() != reflect.Ptr {
+		notPtr = true
+		// Make it addressable
+		v := reflect.New(t)
+		v.Elem().Set(reflect.ValueOf(x))
+		x = v.Interface()
+	}
+
+	if n := el.Have(x, path, value); n == 0 {
 		Fatalf("prototype: can't apply %s on %s", path, t)
 	}
+
+	if notPtr {
+		x = reflect.ValueOf(x).Elem().Interface()
+	}
+
 	return New(x)
 }
 

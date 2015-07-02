@@ -20,6 +20,7 @@ func recordFatals() {
 
 type TestItem struct {
 	Title string
+	Desc  string `json:",omitempty" xml:",omitempty"`
 }
 
 func TestMutations(t *testing.T) {
@@ -41,22 +42,23 @@ func TestMutations(t *testing.T) {
 	verify.Values(t, "instance changed", p.Build(), new(TestItem))
 }
 
-func TestPathIn(t *testing.T) {
+func TestHaves(t *testing.T) {
 	Fatalf = t.Fatalf
-	templates := New(new(TestItem)).HaveIn("/Title", "First", "Second")
 
-	got := make([]*TestItem, len(templates))
+	templates := New(TestItem{}).Have("/Desc", "test").HaveIn("/Title", "First", "Second")
+
+	got := make([]TestItem, len(templates))
 	for i, _ := range templates {
-		x, ok := templates[i].Build().(*TestItem)
+		x, ok := templates[i].Build().(TestItem)
 		if !ok {
 			t.Fatal("Got wrong type")
 		}
 		got[i] = x
 	}
 
-	want := []*TestItem{
-		{Title: "First"},
-		{Title: "Second"},
+	want := []TestItem{
+		{Title: "First", Desc: "test"},
+		{Title: "Second", Desc: "test"},
 	}
 
 	verify.Values(t, "prototype instances", got, want)
