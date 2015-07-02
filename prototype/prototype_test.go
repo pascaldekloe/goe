@@ -45,20 +45,11 @@ func TestMutations(t *testing.T) {
 func TestHaves(t *testing.T) {
 	Fatalf = t.Fatalf
 
-	templates := New(TestItem{}).Have("/Desc", "test").HaveIn("/Title", "First", "Second")
+	got := New(TestItem{}).Have("/Desc", "test").HaveIn("/Title", "First", "Second").BuildAll()
 
-	got := make([]TestItem, len(templates))
-	for i, _ := range templates {
-		x, ok := templates[i].Build().(TestItem)
-		if !ok {
-			t.Fatal("Got wrong type")
-		}
-		got[i] = x
-	}
-
-	want := []TestItem{
-		{Title: "First", Desc: "test"},
-		{Title: "Second", Desc: "test"},
+	want := []interface{}{
+		TestItem{Title: "First", Desc: "test"},
+		TestItem{Title: "Second", Desc: "test"},
 	}
 
 	verify.Values(t, "prototype instances", got, want)

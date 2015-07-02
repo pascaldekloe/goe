@@ -123,8 +123,21 @@ func (t *gobt) String() string {
 	return t.typ.String()
 }
 
-func (c Collection) ForAll(f func(Template)) {
-	for _, t := range c {
-		f(t)
+// Add appends the entry to c.
+func (c *Collection) Add(entry Template) {
+	*c = append(*c, entry)
+}
+
+// AddAll appends all templates from entries to c.
+func (c *Collection) AddAll(entries Collection) {
+	*c = append(*c, entries...)
+}
+
+// BuildAll instantiates the prototypes as in Template.Build.
+func (c Collection) BuildAll() []interface{} {
+	builds := make([]interface{}, len(c))
+	for i, t := range c {
+		builds[i] = t.Build()
 	}
+	return builds
 }
