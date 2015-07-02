@@ -9,12 +9,10 @@ import (
 )
 
 // resolve follows expr on root.
-func resolve(expr string, root interface{}, buildCallbacks *[]finisher) []reflect.Value {
-	x := follow(reflect.ValueOf(root), buildCallbacks != nil)
-	if x == nil {
-		return nil
+func resolve(expr string, root interface{}, buildCallbacks *[]finisher) (track []reflect.Value) {
+	if v, k := follow(reflect.ValueOf(root), buildCallbacks != nil); k != reflect.Invalid {
+		track = []reflect.Value{v}
 	}
-	track := []reflect.Value{*x}
 
 	segments := strings.Split(path.Clean(expr), "/")[1:]
 	if segments[0] == "" { // root selection
@@ -22,6 +20,10 @@ func resolve(expr string, root interface{}, buildCallbacks *[]finisher) []reflec
 	}
 
 	for _, selection := range segments {
+		if len(track) == 0 {
+			return nil
+		}
+
 		var key string
 		if last := len(selection) - 1; selection[last] == ']' {
 			if i := strings.IndexByte(selection, '['); i >= 0 {
@@ -40,7 +42,34 @@ func resolve(expr string, root interface{}, buildCallbacks *[]finisher) []reflec
 		}
 	}
 
-	return track
+	writeIndex := 0
+	if buildCallbacks == nil {
+		for _, v := range track {
+			v, kind := follow(v, buildCallbacks != nil)
+			if kind != reflect.Invalid {
+				track[writeIndex] = v
+				writeIndex++
+			}
+		}
+	} else {
+		for _, v := range track {
+			for {
+				if v.Kind() != reflect.Ptr {
+					track[writeIndex] = v
+					writeIndex++
+					break
+				}
+				if v.IsNil() {
+					if !v.CanSet() {
+						break
+					}
+					v.Set(reflect.New(v.Type().Elem()))
+				}
+				v = v.Elem()
+			}
+		}
+	}
+	return track[:writeIndex]
 }
 
 // followField returns all fields matching s from track.
@@ -49,7 +78,8 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 		// Count fields with n and filter struct types in track while we're at it.
 		writeIndex, n := 0, 0
 		for _, v := range track {
-			if v.Kind() == reflect.Struct {
+			v, kind := follow(v, doBuild)
+			if kind == reflect.Struct {
 				n += v.Type().NumField()
 				track[writeIndex] = v
 				writeIndex++
@@ -58,29 +88,23 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 		track = track[:writeIndex]
 
 		dst := make([]reflect.Value, n)
-		writeIndex = 0
 		for _, v := range track {
 			for i := v.Type().NumField() - 1; i >= 0; i-- {
-				if x := follow(v.Field(i), doBuild); x != nil {
-					dst[writeIndex] = *x
-					writeIndex++
-				}
+				n--
+				dst[n] = v.Field(i)
+				writeIndex++
 			}
 		}
-		return dst[:writeIndex]
+		return dst
 	}
 
 	// Write result back to track with writeIndex to safe memory.
 	writeIndex := 0
 	for _, v := range track {
-		if v.Kind() == reflect.Struct {
-			field := v.FieldByName(s)
-			if field.IsValid() { // exists
-				if x := follow(field, doBuild); x != nil {
-					track[writeIndex] = *x
-					writeIndex++
-				}
-			}
+		v, kind := follow(v, doBuild)
+		if kind == reflect.Struct {
+			track[writeIndex] = v.FieldByName(s)
+			writeIndex++
 		}
 	}
 	return track[:writeIndex]
@@ -92,7 +116,8 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 		// Count elements with n and filter keyed types in track while we're at it.
 		writeIndex, n := 0, 0
 		for _, v := range track {
-			switch v.Kind() {
+			v, kind := follow(v, buildCallbacks != nil)
+			switch kind {
 			case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
 				n += v.Len()
 				track[writeIndex] = v
@@ -107,16 +132,14 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 			switch v.Kind() {
 			case reflect.Array, reflect.Slice, reflect.String:
 				for i, n := 0, v.Len(); i < n; i++ {
-					if x := follow(v.Index(i), buildCallbacks != nil); x != nil {
-						dst[writeIndex] = *x
-						writeIndex++
-					}
+					dst[writeIndex] = v.Index(i)
+					writeIndex++
 				}
 
 			case reflect.Map:
 				for _, key := range v.MapKeys() {
-					if x := followMap(v, key, buildCallbacks); x != nil {
-						dst[writeIndex] = *x
+					if e := followMap(v, key, buildCallbacks); e != nil {
+						dst[writeIndex] = *e
 						writeIndex++
 					}
 				}
@@ -129,7 +152,8 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 	// Write result back to track with writeIndex to safe memory.
 	writeIndex := 0
 	for _, v := range track {
-		switch v.Kind() {
+		v, kind := follow(v, buildCallbacks != nil)
+		switch kind {
 		case reflect.Array, reflect.Slice, reflect.String:
 			if k, err := strconv.ParseUint(s, 0, 64); err == nil && k < (1<<31) {
 				i := int(k)
@@ -140,17 +164,14 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 					n := i - v.Len() + 1
 					v.Set(reflect.AppendSlice(v, reflect.MakeSlice(v.Type(), n, n)))
 				}
-				if x := follow(v.Index(i), buildCallbacks != nil); x != nil {
-					track[writeIndex] = *x
-					writeIndex++
-				}
+				track[writeIndex] = v.Index(i)
+				writeIndex++
 			}
 
 		case reflect.Map:
-			key := parseLiteral(s, v.Type().Key())
-			if key != nil {
-				if x := followMap(v, *key, buildCallbacks); x != nil {
-					track[writeIndex] = *x
+			if key := parseLiteral(s, v.Type().Key()); key != nil {
+				if e := followMap(v, *key, buildCallbacks); e != nil {
+					track[writeIndex] = *e
 					writeIndex++
 				}
 			}
@@ -160,22 +181,22 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 	return track[:writeIndex]
 }
 
-// follow returns content when possible.
-func follow(v reflect.Value, doBuild bool) *reflect.Value {
+// follow tracks content. If the returned kind is invalid the value must be skipped.
+func follow(v reflect.Value, doBuild bool) (reflect.Value, reflect.Kind) {
 	for {
 		k := v.Kind()
 		for k == reflect.Interface {
 			if v.IsNil() {
-				return nil
+				return v, reflect.Invalid
 			}
 			v = v.Elem()
 			k = v.Kind()
 		}
 
 		if k == reflect.Ptr {
-			if doBuild && v.IsNil() {
-				if !v.CanSet() {
-					return nil
+			if v.IsNil() {
+				if !doBuild || !v.CanSet() {
+					return v, reflect.Invalid
 				}
 				v.Set(reflect.New(v.Type().Elem()))
 			}
@@ -186,16 +207,12 @@ func follow(v reflect.Value, doBuild bool) *reflect.Value {
 
 		if k == reflect.Map && v.IsNil() {
 			if !doBuild || !v.CanSet() {
-				return nil
+				return v, reflect.Invalid
 			}
 			v.Set(reflect.MakeMap(v.Type()))
 		}
 
-		if !v.IsValid() {
-			return nil
-		}
-
-		return &v
+		return v, k
 	}
 }
 
@@ -226,7 +243,7 @@ func followMap(m reflect.Value, key reflect.Value, buildCallbacks *[]finisher) *
 		*buildCallbacks = append(*buildCallbacks, &mapWrap{m: &m, k: &key, v: &v})
 	}
 
-	return follow(v, buildCallbacks != nil)
+	return &v
 }
 
 // parseLiteral returns the interpretation of s for t or nil on failure.

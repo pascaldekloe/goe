@@ -82,10 +82,10 @@ var goldenPaths = []goldenCase{
 	{"/.[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
 }
 
-var nilPointer *node
-
 var goldenPathFails = []goldenCase{
-	{"/Child/Name", nilPointer, nil},
+	{"/Name", (*node)(nil), nil},
+	{"/Child", node{}, nil},
+	{"/Child/Name", node{}, nil},
 	{"malformed", node{}, nil},
 	{"/mis", node{}, nil},
 	{"/.[broken]", [2]bool{}, nil},
@@ -205,6 +205,9 @@ func newGoldenHaves() []goldenHave {
 		{"/P", &struct{ P *string }{P: new(string)}, "poin", 1, []string{"poin"}},
 		{"/PP", &struct{ PP **string }{PP: new(*string)}, "doub", 1, []string{"doub"}},
 		{"/PPP", &struct{ PPP ***string }{PPP: new(**string)}, "trip", 1, []string{"trip"}},
+
+		{"/I", &struct{ I interface{} }{}, "in", 1, []string{"in"}},
+		{"/U", &struct{ U interface{} }{U: true}, "up", 1, []string{"up"}},
 
 		{"/X/S", &struct{ X *struct{ S string } }{}, "hell", 1, []string{"hell"}},
 		{"/X/P", &struct{ X **struct{ P *string } }{}, "poin", 1, []string{"poin"}},

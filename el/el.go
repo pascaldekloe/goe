@@ -48,8 +48,8 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 
 	values := eval(path, root, &buildCallbacks)
 
-	w := follow(reflect.ValueOf(want), false)
-	if w == nil {
+	w, kind := follow(reflect.ValueOf(want), false)
+	if kind == reflect.Invalid {
 		return
 	}
 	wt := w.Type()
@@ -61,7 +61,7 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 
 		switch vt := v.Type(); {
 		case wt.AssignableTo(vt):
-			v.Set(*w)
+			v.Set(w)
 			n++
 		case wt.ConvertibleTo(vt):
 			v.Set(w.Convert(vt))
