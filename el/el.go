@@ -48,8 +48,8 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 
 	values := eval(path, root, &buildCallbacks)
 
-	w, kind := follow(reflect.ValueOf(want), false)
-	if kind == reflect.Invalid {
+	w := follow(reflect.ValueOf(want), false)
+	if !w.IsValid() {
 		return
 	}
 	wt := w.Type()
@@ -80,13 +80,11 @@ func Have(root interface{}, path string, want interface{}) (n int) {
 // and the value is a boolean type.
 func Bool(expr string, root interface{}) (result bool, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	if v.Kind() == reflect.Bool {
-		return v.Bool(), true
+	if len(a) == 1 {
+		v := a[0]
+		if v.Kind() == reflect.Bool {
+			return v.Bool(), true
+		}
 	}
 	return
 }
@@ -95,14 +93,12 @@ func Bool(expr string, root interface{}) (result bool, ok bool) {
 // and the value is an integer type.
 func Int(expr string, root interface{}) (result int64, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	switch v.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int(), true
+	if len(a) == 1 {
+		v := a[0]
+		switch v.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return v.Int(), true
+		}
 	}
 	return
 }
@@ -111,14 +107,12 @@ func Int(expr string, root interface{}) (result int64, ok bool) {
 // and the value is an unsigned integer type.
 func Uint(expr string, root interface{}) (result uint64, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	switch v.Kind() {
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint(), true
+	if len(a) == 1 {
+		v := a[0]
+		switch v.Kind() {
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			return v.Uint(), true
+		}
 	}
 	return
 }
@@ -127,14 +121,12 @@ func Uint(expr string, root interface{}) (result uint64, ok bool) {
 // and the value is a floating point type.
 func Float(expr string, root interface{}) (result float64, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	switch v.Kind() {
-	case reflect.Float32, reflect.Float64:
-		return v.Float(), true
+	if len(a) == 1 {
+		v := a[0]
+		switch v.Kind() {
+		case reflect.Float32, reflect.Float64:
+			return v.Float(), true
+		}
 	}
 	return
 }
@@ -143,14 +135,12 @@ func Float(expr string, root interface{}) (result float64, ok bool) {
 // value and the value is a complex type.
 func Complex(expr string, root interface{}) (result complex128, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	switch v.Kind() {
-	case reflect.Complex64, reflect.Complex128:
-		return v.Complex(), true
+	if len(a) == 1 {
+		v := a[0]
+		switch v.Kind() {
+		case reflect.Complex64, reflect.Complex128:
+			return v.Complex(), true
+		}
 	}
 	return
 }
@@ -159,13 +149,11 @@ func Complex(expr string, root interface{}) (result complex128, ok bool) {
 // value and the value is a string type.
 func String(expr string, root interface{}) (result string, ok bool) {
 	a := eval(expr, root, nil)
-	if len(a) != 1 {
-		return
-	}
-
-	v := a[0]
-	if v.Kind() == reflect.String {
-		return v.String(), true
+	if len(a) == 1 {
+		v := a[0]
+		if v.Kind() == reflect.String {
+			return v.String(), true
+		}
 	}
 	return
 }
@@ -179,23 +167,8 @@ func Any(expr string, root interface{}) []interface{} {
 
 	b := make([]interface{}, 0, len(a))
 	for _, v := range a {
-		switch v.Kind() {
-		case reflect.Bool:
-			b = append(b, v.Bool())
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			b = append(b, v.Int())
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			b = append(b, v.Uint())
-		case reflect.Float32, reflect.Float64:
-			b = append(b, v.Float())
-		case reflect.Complex64, reflect.Complex128:
-			b = append(b, v.Complex())
-		case reflect.String:
-			b = append(b, v.String())
-		default:
-			if v.CanInterface() {
-				b = append(b, v.Interface())
-			}
+		if x := asInterface(v); x != nil {
+			b = append(b, x)
 		}
 	}
 	return b
@@ -299,4 +272,28 @@ func Strings(expr string, root interface{}) []string {
 		}
 	}
 	return b
+}
+
+func asInterface(v reflect.Value) interface{} {
+	switch v.Kind() {
+	case reflect.Invalid:
+		return nil
+	case reflect.Bool:
+		return v.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint()
+	case reflect.Float32, reflect.Float64:
+		return v.Float()
+	case reflect.Complex64, reflect.Complex128:
+		return v.Complex()
+	case reflect.String:
+		return v.String()
+	default:
+		if v.CanInterface() {
+			return v.Interface()
+		}
+		return nil
+	}
 }

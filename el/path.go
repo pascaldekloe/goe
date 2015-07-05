@@ -10,9 +10,7 @@ import (
 
 // resolve follows expr on root.
 func resolve(expr string, root interface{}, buildCallbacks *[]finisher) (track []reflect.Value) {
-	if v, k := follow(reflect.ValueOf(root), buildCallbacks != nil); k != reflect.Invalid {
-		track = []reflect.Value{v}
-	}
+	track = []reflect.Value{follow(reflect.ValueOf(root), buildCallbacks != nil)}
 
 	segments := strings.Split(path.Clean(expr), "/")[1:]
 	if segments[0] == "" { // root selection
@@ -42,16 +40,12 @@ func resolve(expr string, root interface{}, buildCallbacks *[]finisher) (track [
 		}
 	}
 
-	writeIndex := 0
 	if buildCallbacks == nil {
-		for _, v := range track {
-			v, kind := follow(v, buildCallbacks != nil)
-			if kind != reflect.Invalid {
-				track[writeIndex] = v
-				writeIndex++
-			}
+		for i, v := range track {
+			track[i] = follow(v, buildCallbacks != nil)
 		}
 	} else {
+		writeIndex := 0
 		for _, v := range track {
 			for {
 				if v.Kind() != reflect.Ptr {
@@ -68,8 +62,9 @@ func resolve(expr string, root interface{}, buildCallbacks *[]finisher) (track [
 				v = v.Elem()
 			}
 		}
+		track = track[:writeIndex]
 	}
-	return track[:writeIndex]
+	return track
 }
 
 // followField returns all fields matching s from track.
@@ -78,8 +73,8 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 		// Count fields with n and filter struct types in track while we're at it.
 		writeIndex, n := 0, 0
 		for _, v := range track {
-			v, kind := follow(v, doBuild)
-			if kind == reflect.Struct {
+			v := follow(v, doBuild)
+			if v.Kind() == reflect.Struct {
 				n += v.Type().NumField()
 				track[writeIndex] = v
 				writeIndex++
@@ -92,7 +87,6 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 			for i := v.Type().NumField() - 1; i >= 0; i-- {
 				n--
 				dst[n] = v.Field(i)
-				writeIndex++
 			}
 		}
 		return dst
@@ -101,8 +95,8 @@ func followField(track []reflect.Value, s string, doBuild bool) []reflect.Value 
 	// Write result back to track with writeIndex to safe memory.
 	writeIndex := 0
 	for _, v := range track {
-		v, kind := follow(v, doBuild)
-		if kind == reflect.Struct {
+		v := follow(v, doBuild)
+		if v.Kind() == reflect.Struct {
 			track[writeIndex] = v.FieldByName(s)
 			writeIndex++
 		}
@@ -116,8 +110,8 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 		// Count elements with n and filter keyed types in track while we're at it.
 		writeIndex, n := 0, 0
 		for _, v := range track {
-			v, kind := follow(v, buildCallbacks != nil)
-			switch kind {
+			v := follow(v, buildCallbacks != nil)
+			switch v.Kind() {
 			case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
 				n += v.Len()
 				track[writeIndex] = v
@@ -138,10 +132,7 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 
 			case reflect.Map:
 				for _, key := range v.MapKeys() {
-					if e := followMap(v, key, buildCallbacks); e != nil {
-						dst[writeIndex] = *e
-						writeIndex++
-					}
+					followMap(dst, &writeIndex, v, key, buildCallbacks)
 				}
 
 			}
@@ -152,8 +143,8 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 	// Write result back to track with writeIndex to safe memory.
 	writeIndex := 0
 	for _, v := range track {
-		v, kind := follow(v, buildCallbacks != nil)
-		switch kind {
+		v := follow(v, buildCallbacks != nil)
+		switch v.Kind() {
 		case reflect.Array, reflect.Slice, reflect.String:
 			if k, err := strconv.ParseUint(s, 0, 64); err == nil && k < (1<<31) {
 				i := int(k)
@@ -170,10 +161,7 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 
 		case reflect.Map:
 			if key := parseLiteral(s, v.Type().Key()); key != nil {
-				if e := followMap(v, *key, buildCallbacks); e != nil {
-					track[writeIndex] = *e
-					writeIndex++
-				}
+				followMap(track, &writeIndex, v, *key, buildCallbacks)
 			}
 
 		}
@@ -181,38 +169,38 @@ func followKey(track []reflect.Value, s string, buildCallbacks *[]finisher) []re
 	return track[:writeIndex]
 }
 
-// follow tracks content. If the returned kind is invalid the value must be skipped.
-func follow(v reflect.Value, doBuild bool) (reflect.Value, reflect.Kind) {
+// follow tracks content.
+func follow(v reflect.Value, doBuild bool) (f reflect.Value) {
 	for {
-		k := v.Kind()
-		for k == reflect.Interface {
-			if v.IsNil() {
-				return v, reflect.Invalid
-			}
-			v = v.Elem()
-			k = v.Kind()
-		}
-
-		if k == reflect.Ptr {
+		switch v.Kind() {
+		case reflect.Ptr:
 			if v.IsNil() {
 				if !doBuild || !v.CanSet() {
-					return v, reflect.Invalid
+					return
 				}
 				v.Set(reflect.New(v.Type().Elem()))
 			}
 			v = v.Elem()
-			k = v.Kind()
-			continue
-		}
 
-		if k == reflect.Map && v.IsNil() {
-			if !doBuild || !v.CanSet() {
-				return v, reflect.Invalid
+		case reflect.Interface:
+			if v.IsNil() {
+				return
 			}
-			v.Set(reflect.MakeMap(v.Type()))
-		}
+			v = v.Elem()
 
-		return v, k
+		case reflect.Map:
+			if v.IsNil() {
+				if !doBuild || !v.CanSet() {
+					return
+				}
+				v.Set(reflect.MakeMap(v.Type()))
+			}
+			return v
+
+		default:
+			return v
+
+		}
 	}
 }
 
@@ -223,12 +211,12 @@ func (w *mapWrap) Finish() {
 	w.m.SetMapIndex(*w.k, *w.v)
 }
 
-func followMap(m reflect.Value, key reflect.Value, buildCallbacks *[]finisher) *reflect.Value {
+func followMap(dst []reflect.Value, dstIndex *int, m reflect.Value, key reflect.Value, buildCallbacks *[]finisher) {
 	v := m.MapIndex(key)
 
 	if buildCallbacks != nil {
 		if !m.CanInterface() {
-			return nil
+			return
 		}
 
 		if v.IsValid() {
@@ -243,7 +231,8 @@ func followMap(m reflect.Value, key reflect.Value, buildCallbacks *[]finisher) *
 		*buildCallbacks = append(*buildCallbacks, &mapWrap{m: &m, k: &key, v: &v})
 	}
 
-	return &v
+	dst[*dstIndex] = v
+	*dstIndex++
 }
 
 // parseLiteral returns the interpretation of s for t or nil on failure.
@@ -254,51 +243,47 @@ func parseLiteral(s string, t reflect.Type) *reflect.Value {
 	case reflect.String:
 		if s, err := strconv.Unquote(s); err == nil {
 			v = reflect.ValueOf(s)
-		} else {
-			return nil
 		}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if i, err := strconv.ParseInt(s, 0, 64); err == nil {
 			v = reflect.ValueOf(i)
-		} else if s[0] == '\'' {
-			r, _, tail, err := strconv.UnquoteChar(s[1:], '\'')
-			if err != nil || tail != "'" {
-				return nil
-			}
-			v = reflect.ValueOf(r)
 		} else {
-			return nil
+			if s[0] == '\'' && len(s) > 2 {
+				r, _, tail, err := strconv.UnquoteChar(s[1:], '\'')
+				if tail == "'" && err == nil {
+					v = reflect.ValueOf(r)
+				}
+			}
 		}
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		if u, err := strconv.ParseUint(s, 0, 64); err == nil {
-			v = reflect.ValueOf(u)
-		} else if s[0] == '\'' {
-			r, _, tail, err := strconv.UnquoteChar(s[1:], '\'')
-			if err != nil || tail != "'" {
-				return nil
-			}
-			v = reflect.ValueOf(r)
+		if i, err := strconv.ParseUint(s, 0, 64); err == nil {
+			v = reflect.ValueOf(i)
 		} else {
-			return nil
+			if s[0] == '\'' && len(s) > 2 {
+				r, _, tail, err := strconv.UnquoteChar(s[1:], '\'')
+				if tail == "'" && err == nil {
+					v = reflect.ValueOf(r)
+				}
+			}
 		}
 
 	case reflect.Float32, reflect.Float64:
 		if f, err := strconv.ParseFloat(s, 64); err == nil {
 			v = reflect.ValueOf(f)
-		} else {
-			return nil
 		}
 
 	default:
 		p := reflect.New(t)
 		if n, _ := fmt.Sscan(s, p.Interface()); n == 1 {
 			v = p.Elem()
-		} else {
-			return nil
 		}
 
+	}
+
+	if v.Kind() == reflect.Invalid {
+		return nil
 	}
 
 	if v.Type() != t {
