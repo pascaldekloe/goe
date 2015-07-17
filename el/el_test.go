@@ -180,7 +180,7 @@ func TestWildCards(t *testing.T) {
 
 }
 
-type goldenHave struct {
+type goldenAssign struct {
 	path  string
 	root  interface{}
 	value interface{}
@@ -191,8 +191,8 @@ type goldenHave struct {
 	result []string
 }
 
-func newGoldenHaves() []goldenHave {
-	return []goldenHave{
+func newGoldenAssigns() []goldenAssign {
+	return []goldenAssign{
 		{"/", strptr("hello"), "hell", 1, []string{"hell"}},
 		{"/.", strptr("hello"), "hell", 1, []string{"hell"}},
 		{"/", strptr("hello"), strptr("poin"), 1, []string{"poin"}},
@@ -230,8 +230,8 @@ func newGoldenHaves() []goldenHave {
 	}
 }
 
-func newGoldenHaveFails() []goldenHave {
-	return []goldenHave{
+func newGoldenAssignFails() []goldenAssign {
+	return []goldenAssign{
 		// No expression
 		{"", strptr("hello"), "fail", 0, nil},
 
@@ -287,9 +287,9 @@ func newGoldenHaveFails() []goldenHave {
 	}
 }
 
-func TestHaves(t *testing.T) {
-	for _, gold := range append(newGoldenHaves(), newGoldenHaveFails()...) {
-		n := Have(gold.root, gold.path, gold.value)
+func TestAssigns(t *testing.T) {
+	for _, gold := range append(newGoldenAssigns(), newGoldenAssignFails()...) {
+		n := Assign(gold.root, gold.path, gold.value)
 		if n != gold.updates {
 			t.Errorf("Got n=%d, want %d for %s", n, gold.updates, gold.path)
 		}
@@ -299,14 +299,14 @@ func TestHaves(t *testing.T) {
 	}
 }
 
-func BenchmarkModifies(b *testing.B) {
+func BenchmarkAssigns(b *testing.B) {
 	b.StopTimer()
 	todo := b.N
 	for {
-		cases := newGoldenHaves()
+		cases := newGoldenAssigns()
 		b.StartTimer()
 		for _, g := range cases {
-			Have(g.root, g.path, g.value)
+			Assign(g.root, g.path, g.value)
 			todo--
 			if todo == 0 {
 				return

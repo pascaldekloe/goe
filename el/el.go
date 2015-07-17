@@ -5,7 +5,7 @@
 // Slash-separated paths specify content for lookups or modification. All paths
 // are subjected to normalization rules. See http://golang.org/pkg/path#Clean
 //
-// Both exported and non-exported `struct` fields can be selected by name.
+// Both exported and non-exported struct fields can be selected by name.
 //
 // Elements in indexed types array, slice and string are denoted with a zero
 // based number inbetween square brackets. Key selections from map types also
@@ -34,7 +34,7 @@ func eval(expr string, root interface{}, buildCallbacks *[]finisher) []reflect.V
 	}
 }
 
-// Have applies want to the path on root and returns the number of successes.
+// Assign applies want to the path on root and returns the number of successes.
 //
 // All content in the path is instantiated the fly with the zero value where
 // possible. This implies automatic construction of structs, pointers and maps.
@@ -43,7 +43,7 @@ func eval(expr string, root interface{}, buildCallbacks *[]finisher) []reflect.V
 // third law of reflection.
 // In short, root should be a pointer and the destination should be exported.
 // See http://blog.golang.org/laws-of-reflection#TOC_8%2E
-func Have(root interface{}, path string, want interface{}) (n int) {
+func Assign(root interface{}, path string, want interface{}) (n int) {
 	var buildCallbacks []finisher
 
 	values := eval(path, root, &buildCallbacks)

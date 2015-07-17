@@ -18,8 +18,6 @@ import (
 // functionality.
 var Fatalf = log.New(os.Stderr, "goe: ", log.LstdFlags).Fatalf
 
-type Collection []Template
-
 // Template is an immutable prototype definition.
 type Template interface {
 	// Build instantiates the prototype.
@@ -35,11 +33,17 @@ type Template interface {
 	// String gets a description for messaging purposes.
 	String() string
 
-	// Have gets a new template with the GoEL path set to value.
-	Have(path string, value interface{}) Template
+	// Assign gets the transformation options for the specified GoEL path.
+	Assign(path string) Transform
+}
 
-	// HaveIn gets a new template for each value.
-	HaveIn(path string, values ...interface{}) Collection
+// Transform builds new templates.
+type Transform interface {
+	// To applies value as a new template.
+	To(value interface{}) Template
+
+	// Each applies each value as a new template.
+	Each(values ...interface{}) Collection
 }
 
 // New creates a template out of x.
@@ -88,8 +92,17 @@ func (t *gobt) BuildXML() []byte {
 	return bytes
 }
 
-func (t *gobt) Have(path string, value interface{}) Template {
-	x := t.Build()
+func (t *gobt) Assign(path string) Transform {
+	return elt{path: path, t: t}
+}
+
+type elt struct {
+	path string
+	t    Template
+}
+
+func (e elt) To(value interface{}) Template {
+	x := e.t.Build()
 
 	var notPtr bool
 	if t := reflect.TypeOf(x); t.Kind() != reflect.Ptr {
@@ -100,8 +113,8 @@ func (t *gobt) Have(path string, value interface{}) Template {
 		x = v.Interface()
 	}
 
-	if n := el.Have(x, path, value); n == 0 {
-		Fatalf("prototype: can't apply %s on %s", path, t)
+	if n := el.Assign(x, e.path, value); n == 0 {
+		Fatalf("prototype: can't apply %s on %s", e.path, e.t)
 	}
 
 	if notPtr {
@@ -111,10 +124,10 @@ func (t *gobt) Have(path string, value interface{}) Template {
 	return New(x)
 }
 
-func (t *gobt) HaveIn(path string, values ...interface{}) Collection {
+func (e elt) Each(values ...interface{}) Collection {
 	c := make(Collection, len(values))
 	for i, v := range values {
-		c[i] = t.Have(path, v)
+		c[i] = e.To(v)
 	}
 	return c
 }
@@ -122,6 +135,8 @@ func (t *gobt) HaveIn(path string, values ...interface{}) Collection {
 func (t *gobt) String() string {
 	return t.typ.String()
 }
+
+type Collection []Template
 
 // Add appends the entry to c.
 func (c *Collection) Add(entry Template) {

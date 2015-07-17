@@ -19,12 +19,12 @@ func FancyOneLiners() {
 	warnings := el.Strings(`/Report/Stats["I\x2fO"]/warn[*]`, x)
 
 	// Data modification:
-	updateCount := el.Have(x, `/Nodes[7]/Cache/TTL`, 3600)
+	el.Assign(x, `/Nodes[7]/Cache/TTL`, 3600)
 ```
 
 #### Selection
 
-Slash-separated paths specify content for lookups or [modification](http://godoc.org/github.com/pascaldekloe/goe/el#Have). All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
+Slash-separated paths specify content for lookups or [modification](http://godoc.org/github.com/pascaldekloe/goe/el#Assign). All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
 
 Both exported and non-exported `struct` fields can be selected by name.
 
@@ -50,6 +50,11 @@ BenchmarkLookups-8 	 2000000	       745 ns/op	     194 B/op	       6 allocs/op
 BenchmarkModifies-8	 1000000	      1005 ns/op	     279 B/op	       8 allocs/op
 ok  	github.com/pascaldekloe/goe/el	4.093s
 ```
+
+
+## Prototyping [API](http://godoc.org/github.com/pascaldekloe/goe/prototype)
+
+WIP (experimental)
 
 
 ## Verification [API](http://godoc.org/github.com/pascaldekloe/goe/verify)

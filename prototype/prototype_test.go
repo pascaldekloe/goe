@@ -42,10 +42,10 @@ func TestMutations(t *testing.T) {
 	verify.Values(t, "instance changed", p.Build(), new(TestItem))
 }
 
-func TestHaves(t *testing.T) {
+func TestAssigns(t *testing.T) {
 	Fatalf = t.Fatalf
 
-	got := New(TestItem{}).Have("/Desc", "test").HaveIn("/Title", "First", "Second").BuildAll()
+	got := New(TestItem{}).Assign("/Desc").To("test").Assign("/Title").Each("First", "Second").BuildAll()
 
 	want := []interface{}{
 		TestItem{Title: "First", Desc: "test"},
@@ -55,9 +55,9 @@ func TestHaves(t *testing.T) {
 	verify.Values(t, "prototype instances", got, want)
 }
 
-func TestWithToFail(t *testing.T) {
+func TestAssignFail(t *testing.T) {
 	recordFatals()
-	New(new(TestItem)).Have("/DoesNotExist", 42)
+	New(new(TestItem)).Assign("/DoesNotExist").To(42)
 
 	want := []string{"prototype: can't apply /DoesNotExist on *prototype.TestItem"}
 	verify.Values(t, "messages", fatals, want)
