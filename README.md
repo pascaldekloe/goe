@@ -22,23 +22,6 @@ func FancyOneLiners() {
 	el.Assign(x, `/Nodes[7]/Cache/TTL`, 3600)
 ```
 
-#### Selection
-
-Slash-separated paths specify content for lookups or [modification](http://godoc.org/github.com/pascaldekloe/goe/el#Assign). All paths are subjected to [normalization rules](http://golang.org/pkg/path#Clean).
-
-Both exported and non-exported `struct` fields can be selected by name.
-
-Elements in indexed types `array`, `slice` and `string` are denoted with a zero based number inbetween square brackets. Key selections from `map` types also use the square bracket notation. Asterisk is treated as a wildcard.
-
-``` BNF
-path            ::= path-component | path path-component
-path-component  ::= "/" segment
-segment         ::= "" | ".." | selection | selection key
-selection       ::= "." | go-field-name
-key             ::= "[" key-selection "]"
-key-selection   ::= "*" | go-literal
-```
-
 #### Performance
 
 The implementation is optimized for performance. No need to precompile expressions.
@@ -46,9 +29,9 @@ The implementation is optimized for performance. No need to precompile expressio
 ```
 # go test -bench=. -benchmem
 PASS
-BenchmarkLookups-8 	 2000000	       745 ns/op	     194 B/op	       6 allocs/op
-BenchmarkModifies-8	 1000000	      1005 ns/op	     279 B/op	       8 allocs/op
-ok  	github.com/pascaldekloe/goe/el	4.093s
+BenchmarkLookups-8	 2000000	       717 ns/op	     194 B/op	       6 allocs/op
+BenchmarkAssigns-8	 2000000	       997 ns/op	     277 B/op	       8 allocs/op
+ok  	github.com/pascaldekloe/goe/el	7.622s
 ```
 
 

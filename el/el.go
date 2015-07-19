@@ -1,9 +1,16 @@
-// Package el offers expression language "GoEL".
+// Package el implements expression language "GoEL".
 //
 // The API is error-free by design. Malformed expressions simply have no result.
 //
 // Slash-separated paths specify content for lookups or modification. All paths
 // are subjected to normalization rules. See http://golang.org/pkg/path#Clean
+//
+//   path            ::= path-component | path path-component
+//   path-component  ::= "/" segment
+//   segment         ::= "" | ".." | selection | selection key
+//   selection       ::= "." | go-field-name
+//   key             ::= "[" key-selection "]"
+//   key-selection   ::= "*" | go-literal
 //
 // Both exported and non-exported struct fields can be selected by name.
 //
