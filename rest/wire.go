@@ -11,10 +11,11 @@ import (
 
 var tailJSON = []byte{'\n'}
 
-func serveJSON(w http.ResponseWriter, statusCode int, x interface{}) {
-	bytes, err := json.MarshalIndent(x, "", "\t")
+// ServeJSON writes the HTTP response body.
+func ServeJSON(w http.ResponseWriter, statusCode int, src interface{}) {
+	bytes, err := json.MarshalIndent(src, "", "\t")
 	if err != nil {
-		log.Print("Can't serialize body: ", err)
+		log.Print("goe rest: serialize response body: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -25,14 +26,16 @@ func serveJSON(w http.ResponseWriter, statusCode int, x interface{}) {
 	w.WriteHeader(statusCode)
 
 	if _, err := w.Write(bytes); err != nil {
-		log.Print(err)
+		log.Print("goe rest: write response body: ", err)
 	}
 	if _, err := w.Write(tailJSON); err != nil {
-		log.Print(err)
+		log.Print("goe rest: write response body: ", err)
 	}
 }
 
-func receiveJSON(dst interface{}, r *http.Request, w http.ResponseWriter) bool {
+// ReceiveJSON reads the HTTP request body.
+// When the return is false then w must be left as is.
+func ReceiveJSON(dst interface{}, r *http.Request, w http.ResponseWriter) bool {
 	switch t, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); {
 	case err != nil:
 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)

@@ -238,7 +238,7 @@ func (r *CRUDRepo) resourceMethods() string {
 
 func (repo *CRUDRepo) serveCreate(w http.ResponseWriter, r *http.Request) {
 	v := reflect.New(repo.dataType)
-	if !receiveJSON(v.Interface(), r, w) {
+	if !ReceiveJSON(v.Interface(), r, w) {
 		return
 	}
 
@@ -326,13 +326,13 @@ func (repo *CRUDRepo) serveRead(w http.ResponseWriter, r *http.Request, id int64
 	h.Set("Last-Modified", timestamp.In(time.UTC).Format(time.RFC1123))
 
 	if r.Method != "HEAD" {
-		serveJSON(w, http.StatusOK, result[0].Interface())
+		ServeJSON(w, http.StatusOK, result[0].Interface())
 	}
 }
 
 func (repo *CRUDRepo) serveUpdate(w http.ResponseWriter, r *http.Request, id int64) {
 	v := reflect.New(repo.dataType)
-	if !receiveJSON(v.Interface(), r, w) {
+	if !ReceiveJSON(v.Interface(), r, w) {
 		return
 	}
 
@@ -393,7 +393,7 @@ func (repo *CRUDRepo) serveUpdate(w http.ResponseWriter, r *http.Request, id int
 	loc.Fragment = ""
 	h.Set("Content-Location", loc.String())
 
-	serveJSON(w, http.StatusOK, v.Interface())
+	ServeJSON(w, http.StatusOK, v.Interface())
 }
 
 func (repo *CRUDRepo) serveDelete(w http.ResponseWriter, r *http.Request, id int64) {
