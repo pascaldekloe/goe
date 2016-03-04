@@ -35,6 +35,19 @@ ok  	github.com/pascaldekloe/goe/el	7.622s
 ```
 
 
+## Metrics [API](https://godoc.org/github.com/pascaldekloe/goe/metrics)
+
+Yet another StatsD implementation.
+
+``` Go
+var Metrics = metrics.NewDummy()
+
+func GetSomething(w http.ResponseWriter, r *http.Request) {
+	Metrics.Seen("http.something.gets", 1)
+	defer Metrics.Took("http.something.get", time.Now())
+```
+
+
 ## Prototyping [API](http://godoc.org/github.com/pascaldekloe/goe/prototype)
 
 WIP (experimental)
