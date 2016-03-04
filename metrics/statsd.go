@@ -16,7 +16,7 @@ type statsd struct {
 	Queue chan []byte
 }
 
-// NewStatsd returns a new Register with a StatsD implementation.
+// NewStatsD returns a new Register with a StatsD implementation.
 // Generally speaking, you want to connect over UDP.
 //
 //	conn, err := net.DialTimeout("udp", "localhost:8125", 4*time.Second)

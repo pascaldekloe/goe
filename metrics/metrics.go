@@ -1,3 +1,4 @@
+// Package metrics provides application metrics registration.
 package metrics
 
 import (
@@ -17,6 +18,7 @@ type Register interface {
 
 type dummy struct{}
 
+// NewDummy returns a new Register which does nothing.
 func NewDummy() Register {
 	return dummy{}
 }
