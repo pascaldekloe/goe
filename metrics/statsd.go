@@ -25,7 +25,7 @@ type statsd struct {
 //	}
 //	stats := metrics.NewStatsD(conn, time.Second)
 //
-// Batches are send at least once every flushInterval. A flushInterval of 0 implies no buffering.
+// Batches are limited by the flushInterval span. A flushInterval of 0 implies no buffering.
 func NewStatsD(conn io.Writer, flushInterval time.Duration) Register {
 	d := new(statsd)
 	{
@@ -33,40 +33,40 @@ func NewStatsD(conn io.Writer, flushInterval time.Duration) Register {
 		d.Queue = make(chan []byte, size)
 		d.Pool = make(chan []byte, size)
 		for i := 0; i < size; i++ {
-			d.Pool <- make([]byte, 0, 80)
+			d.Pool <- make([]byte, 0, 40)
 		}
 	}
 
 	// write statsd.Queue to conn
 	go func() {
-		buf := make([]byte, statsdSizeLimit)
-		lastFlush := time.Now()
+		buf := make([]byte, 0, statsdSizeLimit)
+		var batchStart time.Time
 		for {
 			// flush on interval timeout
-			if len(buf) > 0 && time.Since(lastFlush) >= flushInterval {
+			if len(buf) > 0 && time.Since(batchStart) >= flushInterval {
 				conn.Write(buf)
-				lastFlush = time.Now()
 				buf = buf[:0]
 				continue
 			}
 
-			// pause on no data
-			if len(d.Queue) == 0 {
+			var next []byte
+			select {
+			case next = <-d.Queue:
+			default:
 				time.Sleep(time.Millisecond)
 				continue
 			}
 
-			next := <-d.Queue
-
 			// flush first when size limit reached
 			if len(buf)+1+len(next) > statsdSizeLimit {
 				conn.Write(buf)
-				lastFlush = time.Now()
 				buf = buf[:0]
 			}
 
 			if len(buf) != 0 {
 				buf = append(buf, '\n')
+			} else {
+				batchStart = time.Now()
 			}
 			buf = append(buf, next...)
 
