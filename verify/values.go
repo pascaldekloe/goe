@@ -88,6 +88,12 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 	case reflect.Func:
 		t.differ(path, "Can't compare functions")
 
+	case reflect.Float32, reflect.Float64:
+		a, b := asInterface(got), asInterface(want)
+		if a != b && !(a != a && b != b) {
+			t.differ(path, differMsg(a, b))
+		}
+
 	default:
 		a, b := asInterface(got), asInterface(want)
 		if a != b {

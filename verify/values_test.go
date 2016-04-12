@@ -1,6 +1,7 @@
 package verify
 
 import (
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -35,6 +36,7 @@ var goldenIdentities = []interface{}{
 	byte(1),
 	2,
 	4.8,
+	math.NaN(),
 	16i,
 	o{},
 	&o{},
