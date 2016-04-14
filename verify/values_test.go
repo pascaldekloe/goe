@@ -2,6 +2,7 @@ package verify
 
 import (
 	"math"
+	"math/big"
 	"reflect"
 	"strings"
 	"testing"
@@ -57,6 +58,7 @@ var goldenIdentities = []interface{}{
 		T: "text",
 		O: P{Name: "test"},
 	},
+	14: big.NewInt(32), // unexported fields & encoding.TextMarshaller
 }
 
 func TestGoldenIdentities(t *testing.T) {
@@ -108,6 +110,9 @@ var goldenDiffers = []struct {
 		"/T: Got \"abcdefghijklmnoprstuvwxyz\", want \"abcdefghijklmnopqrstuvwxyz\"\n                         ^"},
 	16: {O{O: P{Name: "Jo"}}, O{O: P{Name: "Joe"}},
 		`/O/Name: Got "Jo", want "Joe"`},
+
+	17: {O{X: big.NewInt(1000)}, O{X: big.NewInt(1001)},
+		"/X/.MarshalText(): Got \"1000\", want \"1001\"\n                           ^"},
 }
 
 func TestGoldenDiffers(t *testing.T) {

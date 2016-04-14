@@ -1,6 +1,7 @@
 package verify
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 	"strings"
@@ -44,7 +45,15 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		seg := &segment{format: "/%s"}
 		path = append(path, seg)
 		for i, n := 0, got.NumField(); i < n; i++ {
-			seg.x = got.Type().Field(i).Name
+			field := got.Type().Field(i)
+			if field.PkgPath != "" {
+				if !t.valuesUnexp(got.Interface(), want.Interface(), path) && !t.valuesUnexp(got.Addr().Interface(), want.Addr().Interface(), path) {
+					t.differ(path, "Can't read private fields")
+				}
+				path = path[:len(path)-1]
+				return
+			}
+			seg.x = field.Name
 			t.values(got.Field(i), want.Field(i), path)
 		}
 		path = path[:len(path)-1]
@@ -101,6 +110,26 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		}
 
 	}
+}
+
+func (t *travel) valuesUnexp(got, want interface{}, path []*segment) bool {
+	if m, ok := got.(encoding.TextMarshaler); ok {
+		path[len(path)-1].x = ".MarshalText()"
+
+		gotBytes, gotBytesErr := m.MarshalText()
+		wantBytes, wantBytesErr := want.(encoding.TextMarshaler).MarshalText()
+
+		if gotBytesErr != nil || wantBytesErr != nil {
+			t.differ(path, fmt.Sprintf("error %q and %q", gotBytesErr, wantBytesErr))
+		} else {
+			gotText, wantText := string(gotBytes), string(wantBytes)
+			if gotText != wantText {
+				t.differ(path, differMsg(gotText, wantText))
+			}
+		}
+		return true
+	}
+	return false
 }
 
 func applyKeySeg(dst *segment, key reflect.Value) {
