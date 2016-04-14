@@ -1,6 +1,7 @@
 package el
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -15,49 +16,49 @@ func strptr(s string) *string {
 	return &s
 }
 
-type vals struct {
-	b bool
-	i int64
-	u uint64
-	f float64
-	c complex128
-	s string
+type Vals struct {
+	B bool
+	I int64
+	U uint64
+	F float64
+	C complex128
+	S string
 }
 
-type ptrs struct {
-	bp *bool
-	ip *int64
-	up *uint64
-	fp *float64
-	cp *complex128
-	sp *string
+type Ptrs struct {
+	BP *bool
+	IP *int64
+	UP *uint64
+	FP *float64
+	CP *complex128
+	SP *string
 }
 
-type node struct {
+type Node struct {
 	Name  *string
-	Child *node
-	child *node
+	Child *Node
+	child *Node
 	X     interface{}
-	a     [2]interface{}
-	s     []interface{}
+	A     [2]interface{}
+	S     []interface{}
 }
 
-var testV = vals{
-	b: true,
-	i: -2,
-	u: 4,
-	f: 8,
-	c: 16i,
-	s: "32",
+var testV = Vals{
+	B: true,
+	I: -2,
+	U: 4,
+	F: 8,
+	C: 16i,
+	S: "32",
 }
 
-var testPV = ptrs{
-	bp: &testV.b,
-	ip: &testV.i,
-	up: &testV.u,
-	fp: &testV.f,
-	cp: &testV.c,
-	sp: &testV.s,
+var testPV = Ptrs{
+	BP: &testV.B,
+	IP: &testV.I,
+	UP: &testV.U,
+	FP: &testV.F,
+	CP: &testV.C,
+	SP: &testV.S,
 }
 
 type goldenCase struct {
@@ -67,48 +68,59 @@ type goldenCase struct {
 }
 
 var goldenPaths = []goldenCase{
-	{"/b", testV, testV.b},
-	{"/ip", &testPV, testV.i},
-	{"/X/X/u", node{X: node{X: testV}}, testV.u},
-	{"/X/../X/fp", node{X: &testPV}, testV.f},
-	{"/X/./X/c", &node{X: &node{X: &testV}}, testV.c},
-	{"/", &testPV.sp, testV.s},
-	{"/.[0]", "hello", uint64('h')},
-	{"/s/.[0]", &node{s: []interface{}{testV.i}}, testV.i},
-	{"/a[1]", node{a: [2]interface{}{testV.f, testV.s}}, testV.s},
-	{"/.[true]", map[bool]string{true: "y"}, "y"},
-	{`/.["I \x2f O"]`, map[strType]float64{"I / O": 99.8}, 99.8},
-	{"/.[1]/.[2]", map[int]map[uint]string{1: {2: "1.2"}}, "1.2"},
-	{"/.[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
-}
-
-var goldenPathFails = []goldenCase{
-	{"/Name", (*node)(nil), nil},
-	{"/Child", node{}, nil},
-	{"/Child/Name", node{}, nil},
-	{"malformed", node{}, nil},
-	{"/mis", node{}, nil},
-	{"/.[broken]", [2]bool{}, nil},
-	{"/.[yes]", map[bool]bool{}, nil},
-	{"/X", node{X: testV}, nil},
-	{"/.[3]", testV, nil},
-	{"/s[4]", node{}, nil},
-	{"/a[5]", node{}, nil},
-	{"/.[6.66]", map[float64]bool{}, nil},
+	0:  {"/B", testV, testV.B},
+	1:  {"/IP", &testPV, testV.I},
+	2:  {"/X/X/U", Node{X: Node{X: testV}}, testV.U},
+	3:  {"/X/../X/FP", Node{X: &testPV}, testV.F},
+	4:  {"/X/./X/C", &Node{X: &Node{X: &testV}}, testV.C},
+	5:  {"/", &testPV.SP, testV.S},
+	6:  {"/.[0]", "hello", uint64('h')},
+	7:  {"/S/.[0]", &Node{S: []interface{}{testV.I}}, testV.I},
+	8:  {"/A[1]", Node{A: [2]interface{}{testV.F, testV.S}}, testV.S},
+	9:  {"/.[true]", map[bool]string{true: "y"}, "y"},
+	10: {`/.["I \x2f O"]`, map[strType]float64{"I / O": 99.8}, 99.8},
+	11: {"/.[1]/.[2]", map[int]map[uint]string{1: {2: "1.2"}}, "1.2"},
+	12: {"/.[*]/.[*]", map[int]map[uint]string{3: {4: "3.4"}}, "3.4"},
 }
 
 func TestPaths(t *testing.T) {
-	for _, gold := range append(goldenPaths, goldenPathFails...) {
-		testGoldenCase(t, reflect.ValueOf(Bool), gold)
-		testGoldenCase(t, reflect.ValueOf(Int), gold)
-		testGoldenCase(t, reflect.ValueOf(Uint), gold)
-		testGoldenCase(t, reflect.ValueOf(Float), gold)
-		testGoldenCase(t, reflect.ValueOf(Complex), gold)
-		testGoldenCase(t, reflect.ValueOf(String), gold)
+	for i, gold := range goldenPaths {
+		testGoldenCase(t, reflect.ValueOf(Bool), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Int), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Uint), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Float), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Complex), gold, i)
+		testGoldenCase(t, reflect.ValueOf(String), gold, i)
 	}
 }
 
-func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
+var goldenPathFails = []goldenCase{
+	0:  {"/Name", (*Node)(nil), nil},
+	1:  {"/Child", Node{}, nil},
+	2:  {"/Child/Name", Node{}, nil},
+	3:  {"Malformed", Node{}, nil},
+	4:  {"/Mis", Node{}, nil},
+	5:  {"/.[broken]", [2]bool{}, nil},
+	6:  {"/.[yes]", map[bool]bool{}, nil},
+	7:  {"/X", Node{X: testV}, nil},
+	8:  {"/.[3]", testV, nil},
+	9:  {"/S[4]", Node{}, nil},
+	10: {"/A[5]", Node{}, nil},
+	11: {"/.[6.66]", map[float64]bool{}, nil},
+}
+
+func TestPathFails(t *testing.T) {
+	for i, gold := range goldenPathFails {
+		testGoldenCase(t, reflect.ValueOf(Bool), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Int), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Uint), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Float), gold, i)
+		testGoldenCase(t, reflect.ValueOf(Complex), gold, i)
+		testGoldenCase(t, reflect.ValueOf(String), gold, i)
+	}
+}
+
+func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase, goldIndex int) {
 	args := []reflect.Value{
 		reflect.ValueOf(gold.expr),
 		reflect.ValueOf(gold.root),
@@ -119,12 +131,12 @@ func testGoldenCase(t *testing.T, f reflect.Value, gold goldenCase) {
 	wantMatch := gold.want != nil && typ == reflect.TypeOf(gold.want)
 
 	if got := result[1].Bool(); got != wantMatch {
-		t.Errorf("Got %s OK %t, want %t for %q", typ, got, wantMatch, gold.expr)
+		t.Errorf("%d: Got %s OK %t, want %t for %q", goldIndex, typ, got, wantMatch, gold.expr)
 		return
 	}
 
 	if got := result[0].Interface(); wantMatch && got != gold.want {
-		t.Errorf("Got %s %#v, want %#v for %q", typ, got, gold.want, gold.expr)
+		t.Errorf("%d: Got %s %#v, want %#v for %q", goldIndex, typ, got, gold.want, gold.expr)
 	}
 }
 
@@ -142,40 +154,41 @@ func BenchmarkLookups(b *testing.B) {
 }
 
 func TestWildCards(t *testing.T) {
-	data := &node{
-		a: [2]interface{}{99, 100},
-		s: []interface{}{"a", "b", 3},
+	data := &Node{
+		A: [2]interface{}{99, 100},
+		S: []interface{}{"a", "b", 3},
 	}
-	valueMix := []interface{}{testV.b, testV.i, testV.u, testV.f, testV.c, testV.s, testV}
+	valueMix := []interface{}{testV.B, testV.I, testV.U, testV.F, testV.C, testV.S, testV}
 
 	tests := []struct {
 		got, want interface{}
 	}{
-		{Bools("/*", testV), []bool{testV.b}},
-		{Ints("/*", testV), []int64{testV.i}},
-		{Uints("/*", testV), []uint64{testV.u}},
-		{Floats("/*", testV), []float64{testV.f}},
-		{Complexes("/*", testV), []complex128{testV.c}},
-		{Strings("/*", testV), []string{testV.s}},
+		0: {Bools("/*", testV), []bool{testV.B}},
+		1: {Ints("/*", testV), []int64{testV.I}},
+		2: {Uints("/*", testV), []uint64{testV.U}},
+		3: {Floats("/*", testV), []float64{testV.F}},
+		4: {Complexes("/*", testV), []complex128{testV.C}},
+		5: {Strings("/*", testV), []string{testV.S}},
 
-		{Any("/*", ptrs{}), []interface{}(nil)},
-		{Bools("/*", ptrs{}), []bool(nil)},
-		{Ints("/*", ptrs{}), []int64(nil)},
-		{Uints("/*", ptrs{}), []uint64(nil)},
-		{Floats("/*", ptrs{}), []float64(nil)},
-		{Complexes("/*", ptrs{}), []complex128(nil)},
-		{Strings("/*", ptrs{}), []string(nil)},
+		6:  {Any("/*", Ptrs{}), []interface{}(nil)},
+		7:  {Bools("/*", Ptrs{}), []bool(nil)},
+		8:  {Ints("/*", Ptrs{}), []int64(nil)},
+		9:  {Uints("/*", Ptrs{}), []uint64(nil)},
+		10: {Floats("/*", Ptrs{}), []float64(nil)},
+		11: {Complexes("/*", Ptrs{}), []complex128(nil)},
+		12: {Strings("/*", Ptrs{}), []string(nil)},
 
-		{Ints("/a[*]", data), []int64{99, 100}},
-		{Strings("/*[*]", data), []string{"a", "b"}},
+		13: {Ints("/A[*]", data), []int64{99, 100}},
+		14: {Strings("/*[*]", data), []string{"a", "b"}},
 
-		{Any("/.[*]", valueMix), valueMix},
-		{Any("/", valueMix), []interface{}{valueMix}},
-		{Any("/MisMatch", valueMix), []interface{}(nil)},
+		15: {Any("/.[*]", valueMix), valueMix},
+		16: {Any("/", valueMix), []interface{}{valueMix}},
+		17: {Any("/MisMatch", valueMix), []interface{}(nil)},
 	}
 
-	for _, test := range tests {
-		verify.Values(t, "wildcard match", test.got, test.want)
+	for i, test := range tests {
+		name := fmt.Sprintf("%d: wildcard match", i)
+		verify.Values(t, name, test.got, test.want)
 	}
 
 }
@@ -213,7 +226,7 @@ func newGoldenAssigns() []goldenAssign {
 		{"/X/P", &struct{ X **struct{ P *string } }{}, "poin", 1, []string{"poin"}},
 		{"/X/PP", &struct{ X **struct{ PP **string } }{}, "doub", 1, []string{"doub"}},
 
-		{"/Child/Child/Child/Name", &node{}, "Grand Grand", 1, []string{"Grand Grand"}},
+		{"/Child/Child/Child/Name", &Node{}, "Grand Grand", 1, []string{"Grand Grand"}},
 
 		{"/.[1]", &[3]*string{}, "up", 1, []string{"up"}},
 		{"/.[2]", &[]string{"1", "2", "3"}, "up", 1, []string{"up"}},
@@ -245,7 +258,7 @@ func newGoldenAssignFails() []goldenAssign {
 		{"/", "hello", "fail", 0, []string{"hello"}},
 
 		// Too abstract
-		{"/X/anyField", &node{}, "fail", 0, nil},
+		{"/X/anyField", &Node{}, "fail", 0, nil},
 
 		// Wrong type
 		{"/Sp", &struct{ Sp *string }{}, 9.98, 0, []string{""}},
@@ -267,7 +280,7 @@ func newGoldenAssignFails() []goldenAssign {
 		{"/Ck[]", &struct{ Ck map[complex128]string }{}, "fail", 0, nil},
 
 		// Non-exported
-		{`/child/Name`, &node{}, "fail", 0, nil},
+		{`/child/Name`, &Node{}, "fail", 0, nil},
 		{`/ns`, &struct{ ns *string }{}, "fail", 0, nil},
 
 		// Non-exported array
