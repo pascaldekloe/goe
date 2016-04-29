@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"testing"
 )
 
-// Values verifies that got has all the content, and only the content, defined by want.
-func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
-	tr := travel{}
-	tr.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
+// Errorer defines error reporting conform testing.T.
+type Errorer interface {
+	Error(args ...interface{})
+}
 
-	fail := tr.report(name)
+// Values verifies that got has all the content, and only the content, defined by want.
+func Values(r Errorer, name string, got, want interface{}) (ok bool) {
+	t := travel{}
+	t.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
+
+	fail := t.report(name)
 	if fail != "" {
-		t.Error(fail)
+		r.Error(fail)
 		return false
 	}
 
