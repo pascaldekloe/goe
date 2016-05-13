@@ -123,16 +123,30 @@ func (t *travel) valuesUnexp(got, want interface{}, path []*segment) bool {
 		gotBytes, gotBytesErr := m.MarshalText()
 		wantBytes, wantBytesErr := want.(encoding.TextMarshaler).MarshalText()
 
-		if gotBytesErr != nil || wantBytesErr != nil {
-			t.differ(path, fmt.Sprintf("error %q and %q", gotBytesErr, wantBytesErr))
-		} else {
+		if gotBytesErr == nil && wantBytesErr == nil {
 			gotText, wantText := string(gotBytes), string(wantBytes)
 			if gotText != wantText {
 				t.differ(path, differMsg(gotText, wantText))
 			}
+			return true
 		}
-		return true
 	}
+
+	if m, ok := got.(encoding.BinaryMarshaler); ok {
+		path[len(path)-1].x = ".MarshalBinary()"
+
+		gotBytes, gotBytesErr := m.MarshalBinary()
+		wantBytes, wantBytesErr := want.(encoding.BinaryMarshaler).MarshalBinary()
+
+		if gotBytesErr == nil && wantBytesErr == nil {
+			gotText, wantText := string(gotBytes), string(wantBytes)
+			if gotText != wantText {
+				t.differ(path, differMsg(gotText, wantText))
+			}
+			return true
+		}
+	}
+
 	return false
 }
 
