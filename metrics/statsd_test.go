@@ -14,10 +14,12 @@ func TestSeen(t *testing.T) {
 
 	d := NewStatsD(buf, 0)
 	d.Seen("gorets", 2)
-	d.Seen("gorets", 4)
+	d.Seen("gorets", 40)
+	d.Seen("gorets", 800)
+	d.Seen("gorets", 1600)
 
 	time.Sleep(30 * time.Millisecond)
-	want := "gorets:2|cgorets:4|c"
+	want := "gorets:2|cgorets:40|cgorets:800|cgorets:1600|c"
 	if got := buf.String(); got != want {
 		t.Errorf("Got %q, want %q", got, want)
 	}

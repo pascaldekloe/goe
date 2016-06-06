@@ -1,8 +1,8 @@
 package metrics
 
 import (
-	"fmt"
 	"io"
+	"strconv"
 	"time"
 )
 
@@ -82,16 +82,42 @@ func NewStatsD(conn io.Writer, flushInterval time.Duration) Register {
 }
 
 func (d *statsD) Seen(key string, n int) {
-	fmt.Fprintf(d, "%s%s:%d|c", d.prefix, key, n)
+	buf := <-d.pool
+	buf = append(buf, d.prefix...)
+	buf = append(buf, key...)
+	buf = append(buf, ':')
+
+	switch {
+	case n < 0 || n >= 100:
+		buf = append(buf, strconv.Itoa(n)...)
+	case n < 10:
+		buf = append(buf, byte('0' + n))
+	default:
+		buf = append(buf, byte('0' + (n / 10)), byte('0' + (n % 10)))
+	}
+
+	buf = append(buf, '|', 'c')
+	d.queue <- buf
 }
 
 func (d *statsD) Took(key string, since time.Time) {
-	fmt.Fprintf(d, "%s%s:%d|ms", d.prefix, key, time.Since(since)/time.Millisecond)
-}
+	buf := <-d.pool
+	buf = append(buf, d.prefix...)
+	buf = append(buf, key...)
+	buf = append(buf, ':')
 
-func (d *statsD) Write(p []byte) (n int, err error) {
-	d.queue <- append(<-d.pool, p...)
-	return len(p), nil
+	n := int64(time.Since(since)/time.Millisecond)
+	switch {
+	case n < 0 || n >= 100:
+		buf = append(buf, strconv.FormatInt(n, 10)...)
+	case n < 10:
+		buf = append(buf, byte('0' + n))
+	default:
+		buf = append(buf, byte('0' + (n / 10)), byte('0' + (n % 10)))
+	}
+
+	buf = append(buf, '|', 'm', 's')
+	d.queue <- buf
 }
 
 func (d *statsD) KeyPrefix(s string) {
