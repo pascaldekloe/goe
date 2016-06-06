@@ -58,7 +58,7 @@ func TestBatch(t *testing.T) {
 	buf := new(bytes.Buffer)
 
 	message := "counter:5|c"
-	messagesInPacket := statsdSizeLimit / (len(message) + 1)
+	messagesInPacket := StatsDPackMax / (len(message) + 1)
 	packet := message + strings.Repeat("\n"+message, messagesInPacket-1)
 
 	d := NewStatsD(buf, 50*time.Millisecond)
