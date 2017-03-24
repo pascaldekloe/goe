@@ -56,8 +56,7 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 				if !t.valuesUnexp(got.Interface(), want.Interface(), path) && !t.valuesUnexp(got.Addr().Interface(), want.Addr().Interface(), path) {
 					t.differ(path, "Can't read private fields")
 				}
-				path = path[:len(path)-1]
-				return
+				break
 			}
 			t.values(got.Field(i), want.Field(i), path)
 		}
@@ -78,7 +77,12 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		}
 		path = path[:len(path)-1]
 
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Ptr:
+		if got.Pointer() != want.Pointer() {
+			t.values(got.Elem(), want.Elem(), path)
+		}
+
+	case reflect.Interface:
 		t.values(got.Elem(), want.Elem(), path)
 
 	case reflect.Map:
@@ -103,17 +107,44 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		t.differ(path, "Can't compare functions")
 
 	case reflect.Float32, reflect.Float64:
-		a, b := asInterface(got), asInterface(want)
+		a, b := got.Float(), want.Float()
 		if a != b && !(a != a && b != b) {
+			t.differ(path, fmt.Sprintf("Got %f (%e), want %f (%e)", a, a, b, b))
+		}
+
+	case reflect.Complex128:
+		a, b := got.Complex(), want.Complex()
+		if a != b && !(a != a && b != b) {
+			t.differ(path, fmt.Sprintf("Got %f (%e), want %f (%e)", a, a, b, b))
+		}
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		if a, b := got.Int(), want.Int(); a != b {
+			if a < 0xA && a > -0xA && b < 0xA && b > -0xA {
+				t.differ(path, fmt.Sprintf("Got %d, want %d", a, b))
+			} else {
+				t.differ(path, fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", a, a, b, b))
+			}
+		}
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if a, b := got.Uint(), want.Uint(); a != b {
+			if a < 0xA && b < 0xA {
+				t.differ(path, fmt.Sprintf("Got %d, want %d", a, b))
+			} else {
+				t.differ(path, fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", a, a, b, b))
+			}
+		}
+
+	case reflect.String:
+		if a, b := got.String(), want.String(); a != b {
 			t.differ(path, differMsg(a, b))
 		}
 
 	default:
-		a, b := asInterface(got), asInterface(want)
-		if a != b {
-			t.differ(path, differMsg(a, b))
+		if a, b := got.Interface(), want.Interface(); a != b {
+			t.differ(path, fmt.Sprintf("Got %v, want %v", a, b))
 		}
-
 	}
 }
 
@@ -155,66 +186,23 @@ func applyKeySeg(dst *segment, key reflect.Value) {
 	} else {
 		dst.format = "[%v]"
 	}
-	dst.x = asInterface(key)
+	dst.x = key.Interface()
 }
 
-func asInterface(v reflect.Value) interface{} {
-	switch v.Kind() {
-	case reflect.Bool:
-		return v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int()
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint()
-	case reflect.Float32, reflect.Float64:
-		return v.Float()
-	case reflect.Complex64, reflect.Complex128:
-		return v.Complex()
-	case reflect.String:
-		return v.String()
-	default:
-		return v.Interface()
+func differMsg(got, want string) string {
+	if len(got) < 9 || len(want) < 9 {
+		return fmt.Sprintf("Got %q, want %q", got, want)
 	}
-}
 
-func differMsg(got, want interface{}) string {
-	switch got.(type) {
-	case int64:
-		g, w := got.(int64), want.(int64)
-		if g < 0xA && g > -0xA && w < 0xA && w > -0xA {
-			return fmt.Sprintf("Got %d, want %d", got, want)
-		}
-		return fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", got, got, want, want)
-	case uint64:
-		g, w := got.(uint64), want.(uint64)
-		if g < 0xA && w < 0xA {
-			return fmt.Sprintf("Got %d, want %d", got, want)
-		}
-		return fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", got, got, want, want)
-	case float64, complex128:
-		return fmt.Sprintf("Got %f (%e), want %f (%e)", got, got, want, want)
-	case string:
-		a, b := got.(string), want.(string)
-		if len(a) > len(b) {
-			a, b = b, a
-		}
-		r := strings.NewReader(b)
+	got, want = fmt.Sprintf("%q", got), fmt.Sprintf("%q", want)
 
-		var differAt int
-		for i, c := range a {
-			o, _, _ := r.ReadRune()
-			if c != o {
-				differAt = i
-				break
-			}
+	// find first character which differs
+	var i int
+	a, b := []rune(got), []rune(want)
+	for i = 0; i < len(a); i++ {
+		if i >= len(b) || a[i] != b[i] {
+			break
 		}
-
-		format := "Got %q, want %q"
-		if differAt > 0 {
-			format += fmt.Sprintf("\n     %s^", strings.Repeat(" ", differAt))
-		}
-		return fmt.Sprintf(format, got, want)
-	default:
-		return fmt.Sprintf("Got %v, want %v", got, want)
 	}
+	return fmt.Sprintf("Got %s, want %s\n    %s^", got, want, strings.Repeat(" ", i))
 }

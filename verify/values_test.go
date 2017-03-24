@@ -112,7 +112,7 @@ var goldenDiffers = []struct {
 		`/O/Name: Got "Jo", want "Joe"`},
 
 	17: {O{X: big.NewInt(1000)}, O{X: big.NewInt(1001)},
-		"/X/.MarshalText(): Got \"1000\", want \"1001\"\n                           ^"},
+		"/X/.MarshalText(): Got \"1000\", want \"1001\""},
 }
 
 func TestGoldenDiffers(t *testing.T) {
