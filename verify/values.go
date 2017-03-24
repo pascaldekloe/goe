@@ -1,6 +1,7 @@
 package verify
 
 import (
+	"bytes"
 	"encoding"
 	"fmt"
 	"reflect"
@@ -124,9 +125,8 @@ func (t *travel) valuesUnexp(got, want interface{}, path []*segment) bool {
 		wantBytes, wantBytesErr := want.(encoding.TextMarshaler).MarshalText()
 
 		if gotBytesErr == nil && wantBytesErr == nil {
-			gotText, wantText := string(gotBytes), string(wantBytes)
-			if gotText != wantText {
-				t.differ(path, differMsg(gotText, wantText))
+			if !bytes.Equal(gotBytes, wantBytes) {
+				t.differ(path, differMsg(string(gotBytes), string(wantBytes)))
 			}
 			return true
 		}
@@ -139,9 +139,8 @@ func (t *travel) valuesUnexp(got, want interface{}, path []*segment) bool {
 		wantBytes, wantBytesErr := want.(encoding.BinaryMarshaler).MarshalBinary()
 
 		if gotBytesErr == nil && wantBytesErr == nil {
-			gotText, wantText := string(gotBytes), string(wantBytes)
-			if gotText != wantText {
-				t.differ(path, differMsg(gotText, wantText))
+			if !bytes.Equal(gotBytes, wantBytes) {
+				t.differ(path, fmt.Sprintf("Got serial 0x%x, want 0x%x", gotBytes, wantBytes))
 			}
 			return true
 		}
