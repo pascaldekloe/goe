@@ -50,6 +50,7 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		path = append(path, seg)
 		for i, n := 0, got.NumField(); i < n; i++ {
 			field := got.Type().Field(i)
+			seg.x = field.Name
 			if field.PkgPath != "" {
 				if !t.valuesUnexp(got.Interface(), want.Interface(), path) && !t.valuesUnexp(got.Addr().Interface(), want.Addr().Interface(), path) {
 					t.differ(path, "Can't read private fields")
@@ -57,7 +58,6 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 				path = path[:len(path)-1]
 				return
 			}
-			seg.x = field.Name
 			t.values(got.Field(i), want.Field(i), path)
 		}
 		path = path[:len(path)-1]
