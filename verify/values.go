@@ -104,7 +104,9 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 		path = path[:len(path)-1]
 
 	case reflect.Func:
-		t.differ(path, "Can't compare functions")
+		if !(got.IsNil() && want.IsNil()) {
+			t.differ(path, "Can't compare functions")
+		}
 
 	case reflect.Float32, reflect.Float64:
 		a, b := got.Float(), want.Float()
