@@ -1,8 +1,6 @@
 package verify
 
 import (
-	"bytes"
-	"encoding"
 	"fmt"
 	"reflect"
 	"strings"
@@ -14,6 +12,7 @@ type Errorer interface {
 }
 
 // Values verifies that got has all the content, and only the content, defined by want.
+// Note that NaN always results in a mismatch.
 func Values(r Errorer, name string, got, want interface{}) (ok bool) {
 	t := travel{}
 	t.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
@@ -49,18 +48,22 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 	case reflect.Struct:
 		seg := &segment{format: "/%s"}
 		path = append(path, seg)
+
+		var unexp []string
 		for i, n := 0, got.NumField(); i < n; i++ {
 			field := got.Type().Field(i)
-			seg.x = field.Name
 			if field.PkgPath != "" {
-				if !t.valuesUnexp(got.Interface(), want.Interface(), path) && !t.valuesUnexp(got.Addr().Interface(), want.Addr().Interface(), path) {
-					t.differ(path, "Can't read private fields")
-				}
-				break
+				unexp = append(unexp, field.Name)
+			} else {
+				seg.x = field.Name
+				t.values(got.Field(i), want.Field(i), path)
 			}
-			t.values(got.Field(i), want.Field(i), path)
 		}
 		path = path[:len(path)-1]
+
+		if len(unexp) != 0 && !reflect.DeepEqual(got.Interface(), want.Interface()) {
+			t.differ(path, "Type %s with unexported fields %q not equal", got.Type(), unexp)
+		}
 
 	case reflect.Slice, reflect.Array:
 		n := got.Len()
@@ -108,18 +111,6 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 			t.differ(path, "Can't compare functions")
 		}
 
-	case reflect.Float32, reflect.Float64:
-		a, b := got.Float(), want.Float()
-		if a != b && !(a != a && b != b) {
-			t.differ(path, fmt.Sprintf("Got %f (%e), want %f (%e)", a, a, b, b))
-		}
-
-	case reflect.Complex128:
-		a, b := got.Complex(), want.Complex()
-		if a != b && !(a != a && b != b) {
-			t.differ(path, fmt.Sprintf("Got %f (%e), want %f (%e)", a, a, b, b))
-		}
-
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if a, b := got.Int(), want.Int(); a != b {
 			if a < 0xA && a > -0xA && b < 0xA && b > -0xA {
@@ -148,38 +139,6 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 			t.differ(path, fmt.Sprintf("Got %v, want %v", a, b))
 		}
 	}
-}
-
-func (t *travel) valuesUnexp(got, want interface{}, path []*segment) bool {
-	if m, ok := got.(encoding.TextMarshaler); ok {
-		path[len(path)-1].x = ".MarshalText()"
-
-		gotBytes, gotBytesErr := m.MarshalText()
-		wantBytes, wantBytesErr := want.(encoding.TextMarshaler).MarshalText()
-
-		if gotBytesErr == nil && wantBytesErr == nil {
-			if !bytes.Equal(gotBytes, wantBytes) {
-				t.differ(path, differMsg(string(gotBytes), string(wantBytes)))
-			}
-			return true
-		}
-	}
-
-	if m, ok := got.(encoding.BinaryMarshaler); ok {
-		path[len(path)-1].x = ".MarshalBinary()"
-
-		gotBytes, gotBytesErr := m.MarshalBinary()
-		wantBytes, wantBytesErr := want.(encoding.BinaryMarshaler).MarshalBinary()
-
-		if gotBytesErr == nil && wantBytesErr == nil {
-			if !bytes.Equal(gotBytes, wantBytes) {
-				t.differ(path, fmt.Sprintf("Got serial 0x%x, want 0x%x", gotBytes, wantBytes))
-			}
-			return true
-		}
-	}
-
-	return false
 }
 
 func applyKeySeg(dst *segment, key reflect.Value) {

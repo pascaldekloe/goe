@@ -1,7 +1,6 @@
 package verify
 
 import (
-	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -37,7 +36,7 @@ var goldenIdentities = []interface{}{
 	6:  byte(1),
 	7:  2,
 	8:  4.8,
-	9:  math.NaN(),
+	9:  float32(-0.0),
 	10: 16i,
 	11: O{},
 	12: &O{},
@@ -112,7 +111,7 @@ var goldenDiffers = []struct {
 		`/O/Name: Got "Jo", want "Joe"`},
 
 	17: {O{X: big.NewInt(1000)}, O{X: big.NewInt(1001)},
-		"/X/.MarshalText(): Got \"1000\", want \"1001\""},
+		"/X: Type big.Int with unexported fields [\"neg\" \"abs\"] not equal"},
 }
 
 func TestGoldenDiffers(t *testing.T) {
