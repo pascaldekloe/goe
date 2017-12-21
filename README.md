@@ -2,7 +2,8 @@
 
 Common enterprise features for the Go programming language (golang).
 
-This is free and unencumbered software released into the public domain.
+This is free and unencumbered software released into the
+[public domain](http://creativecommons.org/publicdomain/zero/1.0).
 
 
 ## Expression Language [API](http://godoc.org/github.com/pascaldekloe/goe/el)
