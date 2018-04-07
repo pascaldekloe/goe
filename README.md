@@ -49,11 +49,6 @@ func GetSomething(w http.ResponseWriter, r *http.Request) {
 ```
 
 
-## Prototyping [API](http://godoc.org/github.com/pascaldekloe/goe/prototype)
-
-WIP (experimental)
-
-
 ## Verification [API](http://godoc.org/github.com/pascaldekloe/goe/verify)
 
 Test assertions on big objects can be cumbersome with ```reflect.DeepEqual``` and ```"Got %#v, want %#v"```.
