@@ -9,13 +9,14 @@ import (
 
 // Values verifies that got has all the content, and only the content, defined by want.
 // Note that NaN always results in a mismatch.
-func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
-	tr := travel{}
-	tr.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
+func Values(tb testing.TB, name string, got, want interface{}) (ok bool) {
+	t := travel{}
+	t.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
 
-	fail := tr.report(name)
+	fail := t.report(name)
 	if fail != "" {
-		t.Error(fail)
+		tb.Helper()
+		tb.Error(fail)
 		return false
 	}
 
