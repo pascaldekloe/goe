@@ -4,22 +4,18 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"testing"
 )
-
-// Errorer defines error reporting conform testing.T.
-type Errorer interface {
-	Error(args ...interface{})
-}
 
 // Values verifies that got has all the content, and only the content, defined by want.
 // Note that NaN always results in a mismatch.
-func Values(r Errorer, name string, got, want interface{}) (ok bool) {
-	t := travel{}
-	t.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
+func Values(t *testing.T, name string, got, want interface{}) (ok bool) {
+	tr := travel{}
+	tr.values(reflect.ValueOf(got), reflect.ValueOf(want), nil)
 
-	fail := t.report(name)
+	fail := tr.report(name)
 	if fail != "" {
-		r.Error(fail)
+		t.Error(fail)
 		return false
 	}
 
