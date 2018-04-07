@@ -56,7 +56,7 @@ Package `verify` offers convenience with reporting. For example `verify.Values(t
 
 ```
 --- FAIL: TestValuesDemo (0.00s)
-	values.go:15: verification for character at demo_test.go:72:
+	demo_test.go:72: verification for character:
 		/Novel[6]/Title: Got "Gold Finger", want "Goldfinger"
 		                          ^
 		/Film[20]/Year: Got 1953 (0x7a1), want 2006 (0x7d6)
