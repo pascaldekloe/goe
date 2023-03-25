@@ -1,4 +1,6 @@
-# Go Enterprise [![GoDoc](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe) [![Build Status](https://travis-ci.org/pascaldekloe/goe.svg?branch=master)](https://travis-ci.org/pascaldekloe/goe)
+# Go Enterprise
+[![API Documentation](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe)
+[![Build Status](https://github.com/pascaldekloe/goe/actions/workflows/go.yml/badge.svg)](https://github.com/pascaldekloe/goe/actions/workflows/go.yml)
 
 Common enterprise features for the Go programming language (golang).
 
