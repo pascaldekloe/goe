@@ -1,14 +1,14 @@
 # Go Enterprise
-[![API Documentation](https://godoc.org/github.com/pascaldekloe/goe?status.svg)](https://godoc.org/github.com/pascaldekloe/goe)
-[![Build Status](https://github.com/pascaldekloe/goe/actions/workflows/go.yml/badge.svg)](https://github.com/pascaldekloe/goe/actions/workflows/go.yml)
 
-Common enterprise features for the Go programming language (golang).
+Common enterprise features for the Go programming language.
 
 This is free and unencumbered software released into the
 [public domain](http://creativecommons.org/publicdomain/zero/1.0).
 
+[![Build Status](https://github.com/pascaldekloe/goe/actions/workflows/go.yml/badge.svg)](https://github.com/pascaldekloe/goe/actions/workflows/go.yml)
 
-## Expression Language [API](http://godoc.org/github.com/pascaldekloe/goe/el)
+
+## Expression Language [![API](https://pkg.go.dev/badge/github.com/pascaldekloe/goe/el.svg)](https://pkg.go.dev/github.com/pascaldekloe/goe/el)
 
 GoEL expressions provide error free access to Go types.
 It serves as a lightweigth alternative to [unified EL](https://docs.oracle.com/javaee/5/tutorial/doc/bnahq.html), [SpEL](http://docs.spring.io/spring/docs/current/spring-framework-reference/html/expressions.html) or even [XPath](http://www.w3.org/TR/xpath), [CSS selectors](http://www.w3.org/TR/css3-selectors) and friends.
@@ -38,7 +38,7 @@ ok  	github.com/pascaldekloe/goe/el	7.622s
 ```
 
 
-## Metrics [API](https://godoc.org/github.com/pascaldekloe/goe/metrics)
+## Metrics [![API](https://pkg.go.dev/badge/github.com/pascaldekloe/goe/metrics.svg)](https://pkg.go.dev/github.com/pascaldekloe/goe/metrics)
 
 Yet another StatsD implementation.
 
@@ -51,7 +51,7 @@ func GetSomething(w http.ResponseWriter, r *http.Request) {
 ```
 
 
-## Verification [API](http://godoc.org/github.com/pascaldekloe/goe/verify)
+## Verification [![API](https://pkg.go.dev/badge/github.com/pascaldekloe/goe/verify.svg)](https://pkg.go.dev/github.com/pascaldekloe/goe/verify)
 
 Test assertions on big objects can be cumbersome with ```reflect.DeepEqual``` and ```"Got %#v, want %#v"```.
 Package `verify` offers convenience with reporting. For example `verify.Values(t, "character", got, want)` might print:
