@@ -30,11 +30,11 @@ func FancyOneLiners() {
 The implementation is optimized for performance. No need to precompile expressions.
 
 ```
-# go test -bench=. -benchmem
-PASS
-BenchmarkLookups-8	 2000000	       717 ns/op	     194 B/op	       6 allocs/op
-BenchmarkAssigns-8	 2000000	       997 ns/op	     277 B/op	       8 allocs/op
-ok  	github.com/pascaldekloe/goe/el	7.622s
+goos: darwin
+goarch: arm64
+pkg: github.com/pascaldekloe/goe/el
+BenchmarkLookups-8   	 4037929	       268.3 ns/op
+BenchmarkAssigns-8   	 2855529	       419.9 ns/op
 ```
 
 
