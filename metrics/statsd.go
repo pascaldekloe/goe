@@ -91,9 +91,9 @@ func (d *statsD) Seen(key string, n int) {
 	case n < 0 || n >= 100:
 		buf = append(buf, strconv.Itoa(n)...)
 	case n < 10:
-		buf = append(buf, byte('0' + n))
+		buf = append(buf, byte('0'+n))
 	default:
-		buf = append(buf, byte('0' + (n / 10)), byte('0' + (n % 10)))
+		buf = append(buf, byte('0'+(n/10)), byte('0'+(n%10)))
 	}
 
 	buf = append(buf, '|', 'c')
@@ -106,14 +106,14 @@ func (d *statsD) Took(key string, since time.Time) {
 	buf = append(buf, key...)
 	buf = append(buf, ':')
 
-	n := int64(time.Since(since)/time.Millisecond)
+	n := int64(time.Since(since) / time.Millisecond)
 	switch {
 	case n < 0 || n >= 100:
 		buf = append(buf, strconv.FormatInt(n, 10)...)
 	case n < 10:
-		buf = append(buf, byte('0' + n))
+		buf = append(buf, byte('0'+n))
 	default:
-		buf = append(buf, byte('0' + (n / 10)), byte('0' + (n % 10)))
+		buf = append(buf, byte('0'+(n/10)), byte('0'+(n%10)))
 	}
 
 	buf = append(buf, '|', 'm', 's')
