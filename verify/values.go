@@ -111,29 +111,29 @@ func (t *travel) values(got, want reflect.Value, path []*segment) {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if a, b := got.Int(), want.Int(); a != b {
 			if a < 0xA && a > -0xA && b < 0xA && b > -0xA {
-				t.differ(path, fmt.Sprintf("Got %d, want %d", a, b))
+				t.differ(path, "Got %d, want %d", a, b)
 			} else {
-				t.differ(path, fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", a, a, b, b))
+				t.differ(path, "Got %d (0x%x), want %d (0x%x)", a, a, b, b)
 			}
 		}
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		if a, b := got.Uint(), want.Uint(); a != b {
 			if a < 0xA && b < 0xA {
-				t.differ(path, fmt.Sprintf("Got %d, want %d", a, b))
+				t.differ(path, "Got %d, want %d", a, b)
 			} else {
-				t.differ(path, fmt.Sprintf("Got %d (0x%x), want %d (0x%x)", a, a, b, b))
+				t.differ(path, "Got %d (0x%x), want %d (0x%x)", a, a, b, b)
 			}
 		}
 
 	case reflect.String:
 		if a, b := got.String(), want.String(); a != b {
-			t.differ(path, differMsg(a, b))
+			t.differ(path, "%s", differMsg(a, b))
 		}
 
 	default:
 		if a, b := got.Interface(), want.Interface(); a != b {
-			t.differ(path, fmt.Sprintf("Got %v, want %v", a, b))
+			t.differ(path, "Got %v, want %v", a, b)
 		}
 	}
 }
